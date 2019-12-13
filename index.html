@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Schematica</title>
+<meta charset="utf-8"/>
+
+<style>
+body {
+  font-family: Monaco;
+  overflow: hidden;
+}
+button {
+  text-align: center;
+  border: none;
+  background-color: #002370;
+  color: white;
+  font-size: 15px;
+  border: 2px solid #002881;
+}
+button:hover {
+  background-color: #555bff;
+  border: 2px solid black;
+}
+button:active {
+  background-color: white;
+}
+#left {
+  position: absolute;
+  display: flex;
+  flex-flow: column;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #2a292e;
+}
+#right {
+  position: absolute;
+  display: flex;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  background-color: #d0d0d0;
+}
+#drawing {
+  height: 100%;
+  width: 100%;
+}
+#title {
+  font-size: 14px;
+  color: white;
+  padding-left: 10px;
+  padding-right: 20px;
+}
+#main_editor_wrapper {
+  height: 66%;
+}
+#editor2 {
+  background-color: #000720;
+  color: white;
+  padding: 20px;
+  height: 33%;
+  flex-grow: 1;
+  overflow: scroll;
+  line-height: 1.0em;
+  font-size: 10px;
+}
+#etoolbar {
+  display: flex;
+  background-color: #001b55;
+}
+#btntoolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+#editorwrapper {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+}
+#console_input {
+  width: 100%;
+  font-family: monospace;
+  background-color: black;
+  border: 1px solid white;
+}
+.dialog_box {
+  color: white;
+  width: 30%;
+  border: 2px solid black;
+  left: 35%;
+  top: 10%;
+  position: absolute;
+  background-color: #001b55;
+  padding: 20px;
+  display: none;
+}
+.dialog_btn {
+  padding: 20px;
+}
+</style>
+</head>
+
+<body>
+  <div id="left">
+    <div id="etoolbar">
+      <h1 id="title">Schematica</h1>
+      <div id="btntoolbar">
+        <button id="about_btn">About</button>
+        <button id="help_btn">Help</button>
+        <button id="library_btn">Show library</button>
+        <button id="switch_btn"> > </button>
+        <button id="render_btn">Run</button>
+        <button id="export_btn">Export</button>
+      </div>
+    </div>
+    <div id="editorwrapper">
+      <!--<div id="editor" contenteditable="true" spellcheck="false"></div>-->
+      <div id="main_editor_wrapper"></div>
+      <div id="editor2">
+        <div id="editor2text">
+          <p> <u>Schematica/Lisk interactive console</u></p>
+          <p> Print-outs, errors, and warnings will appear here.</p>
+          <p> Type 'help' for help. </p>
+        </div>
+        <input type="text" id="console_input"></input>
+      </div>
+    </div>
+  </div>
+  <div id="right">
+    <div id="drawing"></div>
+  </div>
+  <div class="dialog_box" id="export_dialog">
+    <center>
+      <h3>Export as:</h3>
+      <button id="export_svg_btn" class="dialog_btn">.svg</button>
+      <button id="export_png_btn" class="dialog_btn">.png</button>
+      <button id="export_tikz_btn" class="dialog_btn">TikZ</button>
+      <h3>Settings:</h3>
+      <p>PNG scale factor</p>
+      <input type="text" id="png_scale_factor_input"></input>
+      <p>TikZ scale factor</p>
+      <input type="text" id="tikz_scale_factor_input"></input>
+    </center>
+  </div>
+
+  <!--EXTERNAL LIBRARIES:-->
+  <script type="text/javascript" src="libraries/jquery.js"></script>
+
+  <script type="text/javascript" src="libraries/svg.min.js"></script>
+
+  <script src="libraries/codemirror/codemirror.js"></script>
+  <link rel="stylesheet" href="libraries/codemirror/codemirror.css">
+  <link rel="stylesheet" href="libraries/codemirror/blackboard.css">
+  <script src="libraries/codemirror/modified_clojure.js"></script>
+  <script src="libraries/codemirror/matchbrackets.js"></script>
+
+  <script type="text/javascript">
+    // this is to configure MathJax
+    /*MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };*/
+  </script>
+  <script type="text/javascript" id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+  </script>
+
+  <!--SCHEMATICA/LISK FILES: -->
+  <script type="text/javascript" src="lisk.js"></script>
+  <script type="text/javascript" src="tests.js"></script>
+  <script type="text/javascript" src="SchematicaDefaultLibrary.js"></script>
+  <script>
+
+CodeMirror.defaults.theme = "blackboard";
+
+let editor = CodeMirror(main_editor_wrapper);
+editor.setSize("100%", "100%");
+editor.options.matchBrackets = true;
+editor.options.theme = "blackboard";
+
+let userCode = "";
+
+let showingLibrary = false;
+let editorOnLeft = true;
+
+function extractFromEditor() {
+  /*let c = editor.innerHTML;
+  for (let i = 0; i < c.length; i++) {
+    if (c[i] == "\"") {
+      c = c.slice(0, i) + "\\" + c.slice(i);
+      ++i;
+    }
+  }
+  return c;*/
+  return editor.getValue();
+}
+
+let verbose = false;
+
+let M = Math;
+let drawWidth = drawing.clientWidth;
+let drawHeight = drawing.clientHeight;
+let draw = SVG("drawing").size(drawWidth, drawHeight);
+draw.node.style.backgroundColor = "white";
+
+let drawItems = [];
+
+let consoleReturnColor = "#3994ff",
+    consoleErrorColor = "#ff3e3e",
+    consoleWarnColor = "#ff9100",
+    consolePrintColor = "#0dff00",
+    consoleDrawColor = "#00fff0",
+    consoleInputColor = "#d6e4ff"
+
+console_input.style.color = consoleInputColor;
+
+function deleteDrawItems() {
+  for (let i = 0; i < drawItems.length; i++) drawItems[i].remove();
+}
+
+function removeExtraWspace(str) {
+  // removes unnecessary whitespace from the .textContent of the editor window
+  for (let i = 0; i < 2; i++) {
+    while (str[0] == "\n" || str[0] == " ") str = str.slice(1);
+    str = str.split("").reverse().join("");
+    // running this twice removes trailing spaces / newlines at the beginning or end
+  }
+  for (let j = 0; j < str.length; j++) {
+    if ((!(/\S/.test(str[j])) || str[j].charCodeAt(0) == 8629) === true && str[j] !== " ") {
+      // ^ convert all whitespace that isn't a space into a space
+      // (the weird 8629 charcode is what CodeMirror uses for line breaks)
+      str = str.slice(0, j) + str.slice(j + 1)
+    }
+  }
+  let i = 0;
+  while (i < str.length) {
+    if (i > 0 && str[i] == " " && str[i - 1] == " ") {
+      str = str.slice(0, i) + str.slice(i + 1);
+    } else ++i;
+  }
+  return str;
+}
+
+function getProcessedCode(code) {
+  if (code == undefined) code = editor.getValue(); //editor.textContent;
+  return removeExtraWspace(code);
+}
+
+function drawFromCommand(cmd) {
+  switch (cmd.type) {
+    case "line":
+      drawItems.push(draw.line(cmd.x1, cmd.y1, cmd.x2, cmd.y2).stroke({width: cmd.thickness, color: cmd.color, dasharray: cmd.dasharray, linecap: cmd.linecap}));
+      break;
+    case "circle":
+      drawItems.push(draw.circle(cmd.r * 2).move(cmd.x - cmd.r, cmd.y - cmd.r).style({ fill: cmd.fill, stroke: cmd.outlineColor, "stroke-width": cmd.outlineThickness, "stroke-dasharray": cmd.dasharray, "stroke-linecap": cmd.linecap}));
+      /* ^ cmd.r (the radius) is subtracted from x and y coords because .move changes the position of the circle
+      relative to the top-left-most position in which it could have been drawn without crossing canvas edges
+      */
+      break;
+    case "ellipse":
+      drawItems.push(draw.ellipse(cmd.rx*2, cmd.ry*2).move(cmd.x - cmd.rx, cmd.y - cmd.ry).rotate(cmd.angle).style({ fill: cmd.fill, stroke: cmd.outlineColor, "stroke-width": cmd.outlineThickness, "stroke-dasharray": cmd.dasharray, "stroke-linecap": cmd.linecap}));
+      break;
+    case "polygon":
+      let polygon = draw.polygon(cmd.vertices);
+      polygon.fill(cmd.fill).stroke({ width: cmd.outlineThickness, color: cmd.outlineColor, dasharray: cmd.dasharray, linecap: cmd.linecap });
+      drawItems.push(polygon);
+      break;
+    case "text":
+      let text = draw.text(cmd.content).move(cmd.x, cmd.y).font({
+        fill: cmd.color, family: cmd.fontFamily, size: cmd.fontSize,
+        style: cmd.style, weight: cmd.weight
+      }).style({"text-decoration": cmd.decoration});
+      drawItems.push(text);
+      break;
+    case "tex":
+      let svgtex = MathJax.tex2svg(cmd.content).firstChild;
+      svgtex.removeAttribute("xmlns:xlink");
+      /* ^ seems like SVG.js creates another one of these when the normal
+           svg element is cast into an SVG.js element on the next line;
+           this renders fine but causes an error when trying to export the SVG.
+           Hence the removal of the unneccessary property.
+      */
+      let SVGel = SVG(svgtex).move(cmd.x, cmd.y)
+      SVGel.addTo(draw);
+      SVGel.size(1 * cmd.fontSize);
+      drawItems.push(SVGel);
+      break;
+    default:
+      console.log("Unknown object type encountered when drawing: " + type);
+      break;
+  }
+}
+
+let tikzScaleFactor = 1;
+function tikzFromCommand(cmd) {
+  function tikzColor(color) {
+    if (color[0] == "#") { // hexadecimal color code
+      color = color.slice(1);
+      let r, g, b;
+      if (color.length == 3) {
+        r = parseInt(color[0] + color[0], 16);
+        g = parseInt(color[1] + color[1], 16);
+        b = parseInt(color[2] + color[2], 16);
+      } else if (color.length == 6) {
+        r = parseInt(color.slice(0, 2), 16);
+        g = parseInt(color.slice(2, 4), 16);
+        b = parseInt(color.slice(4, 6), 16);
+      } else {
+        throw "Encountered unexpected color format while converting to TikZ: " + color;
+      }
+      return "{rgb,255:red," + r + "; green," + g + "; blue," + b + "}";
+    }
+    // else: pray that all HTML color words ("black", "blue", whatever) are similar enough in TikZ
+    return color;
+  }
+  function tikzFontSize(size) {
+    if (size < 5) return "\\tiny";
+    if (size < 10) return "\\footnotesize";
+    if (size < 15) return "\\normalsize";
+    if (size < 20) return "\\large";
+    if (size < 25) return "\\Large";
+    if (size < 30) return "\\LARGE";
+    if (size < 40) return "\\huge";
+    return "\\Huge";
+    // ^all of these are basically guesstimated based on glancing at this table: https://www.overleaf.com/learn/latex/Font_sizes,_families,_and_styles#Reference_guide
+    /* My excuse is that LaTeX changes the meaning of different font sizes
+       depending on what your document font size is, so this can't be exact anyways. */
+  }
+  function n(N) {
+    return N * tikzScaleFactor + "pt";
+    // ^ because line widths in TikZ seem to be in some different unit (by default) than other measurements
+    /* NOTE: in addition, remember that because TikZ's y-axis is inverted compared to Schematica,
+      y-coordinates must be inverted IN ADDITION to being passed to this function*/
+  }
+  function vertexList(vertices) {
+    let str = "";
+    vertices.push(vertices[0]);
+    for (let i = 0; i < vertices.length; i++) {
+      str += "(" + n(vertices[i][0]) + "," + n(-vertices[i][1]) + ")";
+      if (i != vertices.length - 1) str += " -- ";
+    }
+    return str;
+  }
+  switch (cmd.type) {
+    /* IMPORTANT NOTE (for any poor souls who have to edit this code):
+      TikZ uses a different set of axes -> must prefix any y-coords with a minus sign
+    */
+    case "line":
+      return "\\draw [line width=" + n(cmd.thickness) + ", draw=" + tikzColor(cmd.color)
+        + "] (" + n(cmd.x1) + "," + n(-cmd.y1) + ") -- (" + n(cmd.x2) + "," + n(-cmd.y2) + ");";
+    case "circle":
+      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
+        + "] (" + n(cmd.x) + "," + n(-cmd.y) + ") circle (" + n(cmd.r) + ");";
+    case "ellipse":
+      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
+        + "] (" + n(cmd.x) + "," + n(-cmd.y) + ") ellipse (" + n(cmd.rx) + " and " + n(cmd.ry ) + ");";
+      // TO DO: Add support for rotated ellipses
+    case "polygon":
+      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
+        + "] " + vertexList(cmd.vertices) + ";";
+    case "text":
+      return "\\node [anchor=north west, text=" + tikzColor(cmd.color) + ", font=" + tikzFontSize(cmd.fontSize * tikzScaleFactor)
+        + "] at (" + n(cmd.x) + "," + n(-cmd.y) + ") {" + cmd.content + "};";
+    case "tex":
+      return "\\node [anchor=north west" + ", font=" + tikzFontSize(cmd.fontSize * tikzScaleFactor)
+        + "] at (" + n(cmd.x) + "," + n(-cmd.y) + ") {$" + cmd.content + "$};";
+    default:
+      console.log("Unknown object type encountered when converting to TikZ: " + type);
+      break;
+  }
+}
+
+function toTikz() {
+  return "\\begin{tikzpicture} \n"
+    + "% This TikZ code was generated automatically by Schematica \n" // wooo advertising
+    + "% Visit https://lrudl.github.io/Schematica/ to try it \n"
+    + (liskOutput.filter(x => x.command == "draw")).map(tikzFromCommand).join("\n")
+    + "\n \\end{tikzpicture}";
+}
+
+
+// Image saving functions (thanks StackOverflow):
+function saveSvg() {
+  var svgEl = drawing.firstChild;
+  svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  var svgData = svgEl.outerHTML;
+  var preface = '<?xml version="1.0" standalone="no"?>\r\n';
+  var svgBlob = new Blob([preface, svgData], {type:"image/svg+xml;charset=utf-8"});
+  var svgUrl = URL.createObjectURL(svgBlob);
+  var downloadLink = document.createElement("a");
+  downloadLink.href = svgUrl;
+  downloadLink.download = "Schematic.svg";
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+}
+
+let pngScaleFactor = 1;
+function savePng() {
+  function triggerDownload(imgURI) {
+    var evt = new MouseEvent('click', {
+      view: window,
+      bubbles: false,
+      cancelable: true
+    });
+    var a = document.createElement('a');
+    a.setAttribute('download', 'Schematic.png');
+    a.setAttribute('href', imgURI);
+    a.setAttribute('target', '_blank');
+    a.dispatchEvent(evt);
+  }
+  var canvas = document.createElement("canvas");
+  var ctx = canvas.getContext("2d");
+  var data = (new XMLSerializer()).serializeToString(drawing.firstChild);
+  var DOMURL = window.URL || window.webkitURL || window;
+
+  var img = new Image();
+  var svgBlob = new Blob([data], {type: 'image/svg+xml;charset=utf-8'});
+  var url = DOMURL.createObjectURL(svgBlob);
+
+  img.onload = function () {
+    canvas.width = this.naturalWidth * pngScaleFactor;
+    canvas.height = this.naturalHeight * pngScaleFactor;
+    ctx.drawImage(img, 0, 0, drawWidth * pngScaleFactor, drawHeight * pngScaleFactor);
+    DOMURL.revokeObjectURL(url);
+
+    var imgURI = canvas
+        .toDataURL('image/png')
+        .replace('image/png', 'image/octet-stream');
+
+    triggerDownload(imgURI);
+  };
+
+  img.src = url;
+}
+
+
+let showingExportOptions = false;
+$("#export_btn").click(function () {
+  showingExportOptions = !showingExportOptions;
+  if (showingExportOptions) {
+    export_dialog.style.display = "inline";
+    tikz_scale_factor_input.value = tikzScaleFactor;
+    png_scale_factor_input.value = pngScaleFactor;
+  } else {
+    export_dialog.style.display = "none";
+  }
+});
+
+$("#export_png_btn").click(function() {
+  savePng();
+  $("#export_btn").click();
+});
+$("#export_svg_btn").click(function() {
+  saveSvg();
+  $("#export_btn").click();
+});
+$("#export_tikz_btn").click(function() {
+  window.prompt("Press enter to close", toTikz())
+  $("#export_btn").click();
+})
+$("#tikz_scale_factor_input").on("input", function() {
+  tikzScaleFactor = parseFloat(tikz_scale_factor_input.value);
+})
+$("#png_scale_factor_input").on("input", function() {
+  pngScaleFactor = parseFloat(png_scale_factor_input.value);
+})
+
+
+
+function output2String(o) {
+  function arrayToString(arr) {
+    let str = "[ ";
+    for (let i = 0; i < arr.length; i++) {
+      if (Array.isArray(arr[i])) {
+        str += arrayToString(arr[i]);
+      } else str += arr[i] + " ";
+    }
+    return str + "] ";
+  }
+  if (Array.isArray(o)) o = arrayToString(o);
+  return o;
+}
+
+function handleOutput(o, displayAll) {
+  function printableObj(obj) {
+    let str = "{"
+    for (var prop in obj) {
+      if (obj.hasOwnProperty(prop)) {
+        str += prop + ": " + obj[prop] + "; "
+      }
+    }
+    return str + "}";
+  }
+  for (let i = 0; i < o.length; i++) {
+    if (o[i].command == "print") {
+      writeToConsole(o[i].text, consolePrintColor);
+    } else if (o[i].command == "error") {
+      writeToConsole([o[i].text, o[i].message], consoleErrorColor);
+    } else if (o[i].command == "warn") {
+      writeToConsole(o[i].text, consoleWarnColor);
+    } else if (o[i].command == "return") {
+      if (displayAll) writeToConsole("< " + output2String(o[i].value), consoleReturnColor);
+    } else if (o[i].command == "draw") {
+      if (displayAll) {
+        writeToConsole([printableObj(o[i])], consoleDrawColor);
+      }
+      drawFromCommand(o[i]);
+    } else {
+      if (displayAll) {
+        writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
+      }
+    }
+  }
+}
+
+function displayAllOutput(o) {
+  writeToConsole(["--------", "OUTPUT FROM PREVIOUS EXECUTION:"]);
+  handleOutput(o, true);
+  writeToConsole("--------");
+}
+
+function writeToConsole(text, color) {
+  if (typeof text == "object") { // assume it's an arrays
+    for (let i = 0; i < text.length; i++) {
+      writeToConsole(text[i], color);
+    }
+  } else {
+    if (color == undefined) {
+      editor2text.innerHTML += "<p>" + text + "</p>";
+    } else {
+      editor2text.innerHTML += "<p style='color:" + color + "'>" + text + "</p>";
+    }
+  }
+  editor2.scrollTop = editor2.scrollHeight;
+}
+
+$("#console_input").keypress(function(event) {
+  if (event.keyCode == 13) {
+    let txt = console_input.value;
+    console_input.value = "";
+    writeToConsole("> " + txt, consoleInputColor);
+    if (txt == "help") {
+      writeToConsole(["SCHEMATICA/LISK CONSOLE HELP INFORMATION:",
+                      "Type 'help' to display this information (duh)",
+                      "Type 'clear' to remove previous contents from console",
+                      "Type 'erase' to erase everything that's been drawn",
+                      "Type 'out' to display output from the previous execution",
+                      "Any other input will be interpreted as Lisk code and executed."]);
+    } else if (txt == "clear") {
+      editor2text.innerHTML = "<p>[console cleared]</p>";
+    } else if (txt == "erase") {
+      deleteDrawItems();
+    } else if (txt == "out") {
+      displayAllOutput(liskOutput);
+    } else {
+      liskOutput = [];
+      // macros = {};
+      let finalReturnVal = le(txt);
+      handleOutput(liskOutput);
+      writeToConsole("< " + output2String(finalReturnVal), consoleReturnColor);
+    }
+  }
+})
+
+$("#about_btn").click(function() {
+  window.open("about.html");
+});
+
+$("#help_btn").click(function() {
+  window.open("help.html");
+})
+
+$("#library_btn").click(function() {
+  showingLibrary = !showingLibrary;
+  if (showingLibrary) {
+    userCode = editor.getValue();
+    editor.setValue(libraryCode);
+    $("#library_btn")[0].innerHTML = "Show user code";
+  } else {
+    libraryCode = editor.getValue();
+    editor.setValue(userCode);
+    library_btn.innerHTML = "Show library";
+  }
+});
+
+$("#switch_btn").click(function() {
+  editorOnLeft = !editorOnLeft;
+  if (editorOnLeft) {
+    left.style.left = "0";
+    right.style.left = "50%";
+    switch_btn.innerText = ">";
+  } else {
+    left.style.left = "50%";
+    right.style.left = "0";
+    switch_btn.innerText = "<";
+  }
+})
+
+editor.on("cursorActivity", function() {
+  editor.matchBrackets();
+  // ^ there should be no need for this because CodeMirror should call this automatically ...
+})
+
+$("#render_btn").click(function() {
+  deleteDrawItems();
+  // drawItems = drawFromCommandList(drawCommands(getProcessedCode()));
+  resetGlobalEnv();
+  drawItems = [];
+  /* ^ The weird jQuery stuff converts the tag-filled html code stored in libraryCode
+      into what it would be if you did .innerText on a div containing the same. */
+  let timeText = "Running time: ";
+  console.time(timeText);
+  if (showingLibrary) {
+    le(getProcessedCode(editor.getValue())); // runs the default library (because the library is showing)
+    liskOutput = [];
+    le(getProcessedCode(userCode)); // runs user code
+  } else {
+    le(getProcessedCode(libraryCode)); // runs the default library
+    liskOutput = [];
+    le(getProcessedCode(editor.getValue())); // runs user code
+  }
+  /* ^ cases separated because otherwise pressing render when Schematica library open
+     would run the library code twice (generating a bunch of obnoxious warnings)*/
+  //le(getProcessedCode(editor.getValue()))
+  console.timeEnd(timeText);
+  handleOutput(liskOutput);
+});
+
+
+if (!performTests()) alert("Automatic tests failed to validate the Lisk implementation – see browser console for details");
+resetGlobalEnv();
+
+render_btn.click();
+
+
+  </script>
+</body>
+</html>
