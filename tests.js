@@ -115,8 +115,8 @@ premature optimisation is the root of all evil.*/
     ["(string? \"asdf\")", eq, "#t"],
     ["(string? 3)", eq, "#f"],
     ['(str-concat "abc" "def")', eq, "\"abcdef\""],
-    ['(str-slice "abc" 0 1)', eq, "a"],
-    ['(str-slice "abc" 1)', eq, "bc"]
+    ['(str-slice "abc" 0 1)', eq, "\"a\""],
+    ['(str-slice "abc" 1)', eq, "\"bc\""]
   ],
   [
     "functions",
