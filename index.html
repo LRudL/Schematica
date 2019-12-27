@@ -210,7 +210,7 @@ let drawHeight = drawing.clientHeight;
 let draw = SVG("drawing").size(drawWidth, drawHeight);
 draw.node.style.backgroundColor = "white";
 
-let drawItems = [];
+let drawItems = []; // tracked so that the items can later be easily deleted
 
 let consoleReturnColor = "#3994ff",
     consoleErrorColor = "#ff3e3e",
@@ -257,6 +257,9 @@ function drawFromCommand(cmd) {
   switch (cmd.type) {
     case "line":
       drawItems.push(draw.line(cmd.x1, cmd.y1, cmd.x2, cmd.y2).stroke({width: cmd.thickness, color: cmd.color, dasharray: cmd.dasharray, linecap: cmd.linecap}));
+      break;
+    case "path":
+      drawItems.push(draw.path(cmd.svgPathString).attr({"stroke-width": cmd.outlineThickness, stroke: cmd.outlineColor, "stroke-dasharray": cmd.dasharray, "stroke-linecap": cmd.linecap}).fill(cmd.fill));
       break;
     case "circle":
       drawItems.push(draw.circle(cmd.r * 2).move(cmd.x - cmd.r, cmd.y - cmd.r).style({ fill: cmd.fill, stroke: cmd.outlineColor, "stroke-width": cmd.outlineThickness, "stroke-dasharray": cmd.dasharray, "stroke-linecap": cmd.linecap}));

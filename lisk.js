@@ -203,7 +203,7 @@ class Macro {
     let bindings = {};
     for (let i = 0; i < template.length; i++) {
       if (Array.isArray(template[i])) {
-        $.extend(bindings, Macro.BindingFinder(template[i], input[i]));
+        $.extend(bindings, Macro.BindingFinder(template[i], input[i])); // replace with built-in JS Object.assign
         // ^ merges any bindings found in the sub-array into the bindings object
       } else if (typeof template[i] == "string" && template[i][0] == "#") {
         // note: # is a special character used to indicate a "slot" for an input in a macro definition
@@ -441,6 +441,15 @@ function getPrimitiveProcedure(procName, env) {
     // MATH FUNCTIONS
     case "number?": return n => boolConvert(!isNaN(n));
     case "integer?": return n => boolConvert(Number.isInteger(n));
+    case "in-base":
+      return function(n, b) {
+        return '"' + n.toString(b) + '"';
+      }
+    case "num-of":
+      return function(n, b) {
+        b = b == undefined? 10 : b;
+        return parseInt(unstringify(n), b);
+      }
     case "round": return n => Math.round(n);
     case "floor": return n => Math.floor(n);
     case "ceil": return n => Math.ceil(n);
@@ -512,26 +521,34 @@ function getPrimitiveProcedure(procName, env) {
       return function() {
         return '"' + argsToArray(arguments/*, s => typeof s === "string"*/).map(unstringify).reduce((acc, val) => acc + val) + '"';
       }
+    case "str-of":
+      return function(obj) {
+        return '"' + String(obj) + '"';
+      }
     case "str-slice":
       return function(str, start, end) {
         str = unstringify(str);
         if (end == undefined) end = str.length;
-        return str.slice(start, end);
+        return '"' + str.slice(start, end) + '"';
+      }
+    case "str-len":
+      return function(str) {
+        return unstringify(str).length;
       }
 
     // LOGGING FUNCTIONS
     case "cprint": // cprint = console print; print to JS console
       return function(x) {
         console.log(x);
-        return "#u";
+        return x;
       }
-    case "print": // does not print to console, but pushes print command to output list for some other program to worry about
+    case "print": // does not print to console, but pushes print command to output list for some other program to worry about (in the case of base Schematica, this is done in index.html)
       return function(x) {
         liskOutput.push( {
           command : "print",
           text : x
         });
-        return "#u";
+        return x;
       }
 
     // DARK MAGIC
@@ -628,6 +645,18 @@ function getPrimitiveProcedure(procName, env) {
             fill : a2 == undefined ? "none" : unstringify(a2),
             outlineThickness : thickness,
             outlineColor: a4 == undefined ? "#000000" : unstringify(a4),
+            dasharray : strokeProps(a5, thickness)[0],
+            linecap : strokeProps(a5, thickness)[1]
+          });
+        } else if (type == "\"path\"") {
+          let thickness = a3 == undefined ? 1 : a3;
+          liskOutput.push( {
+            command : "draw",
+            type : "path",
+            svgPathString : unstringify(a1),
+            fill : a2 == undefined ? "none" : unstringify(a2),
+            outlineThickness : thickness,
+            outlineColor : a4 == undefined ? "#000000" : unstringify(a4),
             dasharray : strokeProps(a5, thickness)[0],
             linecap : strokeProps(a5, thickness)[1]
           });
@@ -798,7 +827,7 @@ function joinStrings(r, start) {
   */
   if (start == undefined) start = 0;
   for (let i = start; i < r.length; i++) {
-    if (r[i][0] === '"' && r[i][r[i].length-1] !== '"') {
+    if (r[i][0] === '"' && (r[i][r[i].length-1] !== '"' || r[i].length == 1)) {
       // ^ this implies a string like ["example string"] has been split into two elements: ["example] and [string"]
       r = r.slice(0, i).concat(r[i] + " " + r[i + 1]).concat(r.slice(i + 2));
       // ^ creates an array where the element in which the string starts and the element after it are now joined
