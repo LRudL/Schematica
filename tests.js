@@ -23,7 +23,7 @@ premature optimisation is the root of all evil.*/
     "string parsing",
     ['"strings"', eq, '"strings"'],
     ['"do spaces work?"', eq, '"do spaces work?"'],
-    ['"\'(what if) a string contains : special characters"', eq, '"\'(what if) a string contains : special characters"']
+    ['"\'(what if) a string contains : special characters\\""', eq, '"\'(what if) a string contains : special characters\\""']
   ],
   [
     "quotation",

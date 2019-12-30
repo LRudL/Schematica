@@ -356,7 +356,7 @@ function liskListEval(exprList, env) {
 /*
 function isPrimitiveProcedure(procName) {
   if (getPrimitiveProcedure(procName) == false) return false;
-  return true; /// why say more words when less ok
+  return true; /// why say more words when less do same
 }
 */
 function floatingEq(a, b) {
@@ -464,9 +464,9 @@ function getPrimitiveProcedure(procName, env) {
         b = b == undefined? 10 : b;
         return parseInt(unstringify(n), b);
       }
-    case "round": return n => Math.round(n);
-    case "floor": return n => Math.floor(n);
-    case "ceil": return n => Math.ceil(n);
+    case "round": return Math.round;
+    case "floor": return Math.floor;
+    case "ceil": return Math.ceil;
     case ">":
       return function() {
         return disqualifyingCompare((base, comp) => !(base - comp > floatingPrecision), arguments);
@@ -477,34 +477,34 @@ function getPrimitiveProcedure(procName, env) {
       }
     case "+":
       return function() {
-        return argsToArray(arguments, x => isNaN(x)).reduce((acc, val) => acc + val);
+        return argsToArray(arguments, isNaN).reduce((acc, val) => acc + val);
       }
     case "-":
       return function() {
-        return argsToArray(arguments, x => isNaN(x)).reduce((acc, val) => acc - val);
+        return argsToArray(arguments, isNaN).reduce((acc, val) => acc - val);
       }
     case "*":
       return function() {
-        return argsToArray(arguments, x => isNaN(x)).reduce((acc, val) => acc * val);
+        return argsToArray(arguments, isNaN).reduce((acc, val) => acc * val);
       }
     case "/":
       return function() {
-        return argsToArray(arguments, x => isNaN(x)).reduce((acc, val) => acc / val);
+        return argsToArray(arguments, isNaN).reduce((acc, val) => acc / val);
       }
     case "mod": return (a, b) => a % b;
-    case "sin": return x => Math.sin(x);
-    case "cos": return x => Math.cos(x);
-    case "tan": return x => Math.tan(x);
-    case "asin": return x => Math.asin(x);
-    case "acos": return x => Math.acos(x);
-    case "atan": return x => Math.atan(x);
-    case "exp": return x => Math.exp(x);
-    case "pow": return (x, y) => Math.pow(x, y);
-    case "sqrt": return x => Math.sqrt(x);
-    case "ln": case "log": return x => Math.log(x);
-    case "random": return function() {return Math.random();};
-    case "min": return function() {return Math.min.apply(null, argsToArray(arguments));};
-    case "max": return function() {return Math.max.apply(null, argsToArray(arguments));};
+    case "sin": return Math.sin;
+    case "cos": return Math.cos;
+    case "tan": return Math.tan;
+    case "asin": return Math.asin;
+    case "acos": return Math.acos;
+    case "atan": return Math.atan;
+    case "exp": return Math.exp;
+    case "pow": return Math.pow;
+    case "sqrt": return Math.sqrt;
+    case "ln": case "log": return Math.log;
+    case "random": return Math.random;
+    case "min": return function() { return Math.min(...arguments); };
+    case "max": return function() { return Math.max(...arguments); };
 
     // LIST MANIPULATION FUNCTIONS
     // (note: underlying representation for flat list is that of an array, not nested cons structure like in Lisp)

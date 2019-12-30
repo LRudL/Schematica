@@ -37,6 +37,14 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 
 ## Version history
 
+### v0.3.1
+2019-12-30
+
+- Lisk
+  - Optimized parser.
+  - Syntax errors now give line and column number of the error.
+  - Quotes now support escaped quotes (" \" " no longer errors).
+
 ### v0.3.0
 
 2019-12-13

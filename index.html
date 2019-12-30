@@ -251,7 +251,8 @@ function removeExtraWspace(str) {
 
 function getProcessedCode(code) {
   if (code == undefined) code = editor.getValue(); //editor.textContent;
-  return removeExtraWspace(code);
+  // return removeExtraWspace(code);
+  return code;
 }
 
 function drawFromCommand(cmd) {
@@ -517,10 +518,8 @@ function handleOutput(o, displayAll) {
         writeToConsole([printableObj(o[i])], consoleDrawColor);
       }
       drawFromCommand(o[i]);
-    } else {
-      if (displayAll) {
-        writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
-      }
+    } else if (displayAll) {
+      writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
     }
   }
 }

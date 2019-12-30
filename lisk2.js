@@ -27,7 +27,7 @@ const stackLimit = 1 << 10, loopLimit = 1 << 15, epsilon = 1e-10, // epsilon is 
   stringToken = /"(\\?[^\\"]|\\\\|\\")*"/g, // magic
   token = /('?\(|\)|"(\\?[^\\"]|\\\\|\\")*"|:|[^()\s":]+)/g, // more magic
   ccss = ["color:white;background-color:red;","color:unset;background-color:unset;","color:yellow"], // console can be colorful! see validate()
-  env = Object.create(null);
+  env = Object.create(null); // empty prototype chain
 env['+'] = arr => arr.reduce((a, b) => a + b);
 env['-'] = arr => arr.reduce((a, b) => a - b);
 env['*'] = arr => arr.reduce((a, b) => a * b);
@@ -37,7 +37,7 @@ env['='] = arr => {
   return arr.every(x => floatEq(last, x));
 };
 env['=='] = arr => {
-  const last = arr.pop();
+  const last = arr.pop(); // screw what people say; prematurely ignoring premature optimization is the root of all evil.
   return arr.every(x => last >= x && x >= last);
 };
 env['>'] = arr => {
@@ -56,14 +56,30 @@ env['<='] = arr => {
   const first = arr.shift();
   return arr.every(x => first < x);
 };
-env.mod = (x, y) => x - Math.floor(x / y) * y;
+env['//'] = () => undefined;
 env.ln = Math.log;
 env.log = (x, y = Math.E) => Math.log(x) / Math.log(y);
+env.mod = (x, y) => x - Math.floor(x / y) * y;
 env.if = (predicate, consequent, alternative) => predicate ? consequent : alternative;
 env.quote = x => x;
 env.seed = (x = Date.now(), y = 0x5F375A86) => rand.seed(x, y);
 env.random = (x = 0, y = 1) => rand.float() * (y - x) + x;
 env.randInt = (x = 0xffffffff) => rand() % x;
+env.let = function(x, y) { // I HAVE NO IDEA HOW TO MAKE THIS WORK
+  if(this[x] !== undefined)
+    console.log(`${x} is already defined as ${this[x]} in the current scope; set is preferred for redefining ${x}.`)
+  this[x] = y;
+};
+env.set = function(x, y) {
+  if(this[x] === undefined)
+    console.log(`${x} is undefined in the current scope; let is preferred for defining for the first time.`);
+  this[x] = y;
+};
+for(const key of Object.getOwnPropertyNames(Math)) {
+  if(key == 'toSource') continue; // this is a firefox thing... must remove.
+  if(typeof Math[key] == 'function' && env[key] === undefined)
+    env[key] = Math[key];
+}
 
 const time = (fn, args) => { // record function time
   console.time(fn.name);
