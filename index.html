@@ -114,6 +114,7 @@ button:active {
         <button id="switch_btn"> > </button>
         <button id="render_btn">Run</button>
         <button id="export_btn">Export</button>
+        <button id="rand_btn">Example</button>
       </div>
     </div>
     <div id="editorwrapper">
@@ -176,6 +177,7 @@ button:active {
   <script type="text/javascript" src="lisk.js"></script>
   <script type="text/javascript" src="tests.js"></script>
   <script type="text/javascript" src="SchematicaDefaultLibrary.js"></script>
+  <script type="text/javascript" src="default_images.js"></script>
   <script>
 
 CodeMirror.defaults.theme = "blackboard";
@@ -593,6 +595,16 @@ $("#library_btn").click(function() {
     library_btn.innerHTML = "Show library";
   }
 });
+
+$("#rand_btn").click(function() {
+  if (editor.getValue() != "") {
+    if (!confirm("There is text in the editor that will be overwritten and lost - continue?")) return;
+  }
+  let chosen = exampleDiagrams[Math.floor(exampleDiagrams.length * Math.random())]
+  editor.setValue(chosen);
+  console.log(chosen);
+  render_btn.click();
+})
 
 $("#switch_btn").click(function() {
   editorOnLeft = !editorOnLeft;
