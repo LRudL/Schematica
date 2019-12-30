@@ -119,7 +119,7 @@ function liskEval(expr, env) {
       }
       return val;
     }
-    if (key == "lambda") {
+    if (key == "lambda" || key == "!") {
       let parameters = expr[1];
       if (Array.isArray(parameters)) {
         return makeProcedure(expr[1], expr.slice(2), env);
@@ -747,172 +747,89 @@ function resetGlobalEnv() {
   macros = {};
 }
 
-
-
-
 // PARSING CODE
 
-
-function parseToList(expr, start, end) {
-  function closingPar(expr, i) {
-    let pcount = 1;
-    for (let j = i + 1; j < expr.length; j++) {
-      if (expr[j] == "(") {
-        ++pcount;
-      } else if (expr[j] == ")") {
-        --pcount;
-        if (pcount == 0) return j;
-      }
+const stringToken = /"(\\?[^\\"]|\\\\|\\")*"/g,
+  token = /('?\(|\)|"(\\?[^\\"]|\\\\|\\")*"|:|[^()\s":]+)/g;
+const validate = str => {
+  str = str.replace(stringToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
+  let openClose = 0, line = 1, column = 1;
+  const openPos = [];
+  for(let i = 0, l = str.length; i < l; i++) {
+    switch(str[i]) {
+      case '\n':
+        ++line;
+        column = 0;
+        break;
+      case '(':
+        ++openClose;
+        openPos.push([line, column]);
+        break;
+      case ')':
+        if(--openClose < 0) {
+          createErrorObj('Syntax Error:', `Unmatched <span style="color:#fff">)</span> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          return false;
+        }
+        openPos.pop();
+        break;
+      case '\'':
+        if(str[i + 1] === undefined || /[\s')]/.test(str[i + 1])) {
+          createErrorObj('Syntax Error:', `<span style="color:#fff">'</span> requires a valid operand on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          return false;
+        }
+        break;
+      case '"':
+        createErrorObj('Syntax Error:', `Unmatched <span style="color:#fff">"</span> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+        return false;
     }
+    ++column;
+  }
+  if(openClose) {
+    [line, column] = openPos[openClose - 1];
+    createErrorObj('Syntax Error:', `${openClose} unmatched <span style="color:#fff">(</span>, last one on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
     return false;
   }
-  if (start == undefined) start = 0;
-  if (end == undefined) end = expr.length;
-  let r = [];
-  let i = start;
-  while (i < end) {
-    if (expr[i] == "(") {
-      let closingParentheses = closingPar(expr, i);
-      if (!closingParentheses) {
-        createErrorObj("Your parentheses are messed up.", "No closing parentheses found to close the parentheses at position " + i + " in the expression: " + expr.join(" "));
-        return false;
-      };
-      r.push(parseToList(expr, i + 1, closingParentheses));
-      i = closingParentheses + 1;
+  return true;
+};
+
+function parseCode(str) {
+  const matches = str.match(token), program = [], path = [];
+  if(matches == null) return program;
+  let quoteDepth = 0, temp = program;
+  for(let i = 0, l = matches.length; i < l; ++i) {
+    let match = matches[i];
+    if(match == '\'(') {
+      temp.push(["quote", []]);
+      path.push(temp.length - 1, 1);
+      temp = temp[temp.length - 1][1];
+      ++quoteDepth;
+    } else if(match[0] == '\'') {
+      //if(match == '\'!') // moved to key == '!'
+        //match = ' lambda';
+      temp.push(["quote", match.slice(1)]);
+    } else if(match == '(') {
+      temp.push([]);
+      path.push(temp.length - 1);
+      temp = temp[temp.length - 1];
+      if(quoteDepth)
+        ++quoteDepth;
+    } else if(match == ')') {
+      path.pop();
+      if(quoteDepth)
+        if(!--quoteDepth)
+          path.pop();
+      temp = program;
+      for(let i = 0, l = path.length; i < l; ++i)
+        temp = temp[path[i]];
     } else {
-      r.push(expr[i]);
-      ++i;
+      if(!isNaN(+match))
+        match = +match;
+      //else if(match == '!')
+        //match = 'lambda';
+      temp.push(match);
     }
   }
-  return r;
-}
-
-function removeExtraSpaces(str) {
-  let i = 1;
-  while (i < str.length) {
-    if (str[i] == " " && str[i - 1] == " ") {
-      str = str.slice(0, i) + str.slice(i + 1);
-    } else {
-      ++i;
-    }
-  }
-  return str;
-}
-
-function separateChars(str, chars) {
-  /* The way the code string is converted into an array is by doing .split(" ")
-     on the code; for this to work, this function is needed to separate e.g. parentheses with spaces
-     from everything else.
-  */
-  function separateChar(str, char) {
-    function checkSides(str, i) {
-      let sides = [0, 0];
-      if (str[i-1] !== " " && str[i-1] !== undefined) sides[0] = 1; // undefined takes care of case where i=0 and str[i] = undef
-      if (str[i+1] !== " " && str[i+1] !== undefined) sides[1] = 1;
-      return sides;
-    }
-    let i = 0;
-    let isInsideQuote = false;
-    while (i < str.length) {
-      if (str[i] == char && isInsideQuote === false) {
-        let sides = checkSides(str, i);
-        let replacement = " ".repeat(sides[0]) + str[i] + " ".repeat(sides[1]);
-        str = str.slice(0, i) + replacement + str.slice(i + 1);
-        i += sides[0] + sides[1];
-      }
-      if (str[i] == '"') {
-        isInsideQuote = !isInsideQuote;
-      }
-      ++i;
-    }
-    return str;
-  }
-  for (let i = 0; i < chars.length; i++) {
-    str = separateChar(str, chars[i]);
-  }
-  return str;
-}
-
-function joinStrings(r, start) {
-  /* The parsing step of space-based splitting splits multi-word strings into pieces;
-     this function runs after the splitting step to rejoin long strings.
-     (Smarter splitting logic would remove the need for this,
-     but of course then the splitting logic would be more complex.)
-  */
-  if (start == undefined) start = 0;
-  for (let i = start; i < r.length; i++) {
-    if (r[i][0] === '"' && (r[i][r[i].length-1] !== '"' || r[i].length == 1)) {
-      // ^ this implies a string like ["example string"] has been split into two elements: ["example] and [string"]
-      r = r.slice(0, i).concat(r[i] + " " + r[i + 1]).concat(r.slice(i + 2));
-      // ^ creates an array where the element in which the string starts and the element after it are now joined
-      return joinStrings(r, i);
-      // ^ repeat process after merging the two elements (starts at i for a slight efficiency boost)
-    }
-  }
-  return r;
-}
-
-/*function recursiveReplacer(list, predicate, func) {
-  for (let i = 0; i < list.length; i++) {
-    if (typeof list[i] == "object") { // -> is list[i] a sublist?
-      list[i] = recursiveReplacer(list[i], predicate, func);
-    } else {
-      if (predicate(list[i])) {
-        list[i] = func(list[i]);
-      }
-    }
-  }
-  return list;
-}*/
-
-function recursiveReplacer(list, predicate, func) {
-  for (let i = 0; i < list.length; i++) {
-    if (typeof list[i] != "string") { // -> is list[i] a sublist?
-      list[i] = recursiveReplacer(list[i], predicate, func);
-    } else {
-      if (predicate(list[i])) {
-        let res = func(list, i); // I thought this bit of abstraction was necessary, but it turned out to not be
-        list = res[0];           // So the above commented-out version of this function is perfectly fine
-        i = res[1];              // But switching back would require changing things below
-      }                          // And something something premature optimisation something something
-    }
-  }
-  return list;
-}
-
-function parseCode(code) {
-  // Nothing to see here, just move on ...
-  let parsed = recursiveReplacer( // 8. Replace ! with lambda
-                recursiveReplacer( // 7. Expand 'expr into (quote expr)
-                  recursiveReplacer( // 6. Replace number strings with numbers ("42" -> 42)
-                    parseToList( // 5. Convert the depth-1 array of all tokens in the code into a nested array
-                      joinStrings( // 4. If a string has been broken across many array elements (because it has spaces), rejoin it
-                        separateChars(
-                            code,
-                            ["(", ")", ":", "'"])
-                          // ^ 1. Separate special characters from others with spaces
-                          .split(" ") // 2. Split string into array
-                          .filter(function(str) { // 3. Remove all whitespace-only elements from array
-                            return /\S/.test(str); // (there shouldn't be any but better be safe ... ?)
-                        }))),
-                    x => parseFloat(x) == x, // test for whether string represents a number
-                    function(list, i) {
-                      list[i] = parseFloat(list[i]);
-                      return [list, i];
-                    }),
-                x => x == "'",
-                function(list, i) {
-                  list[i] = ["quote", list[i + 1]];
-                  list = list.slice(0, i + 1).concat(list.slice(i + 2));
-                  return [list, i];
-                }),
-              x => x == "!",
-              function(list, i) {
-                list[i] = "lambda";
-                return [list, i];
-              });
-  // console.log(parsed);
-  return parsed;
+  return program;
 }
 
 function createErrorObj(text, message) {
@@ -945,6 +862,8 @@ function output2String(o) {
 
 function le(code, env) {
   if (env == undefined) env = globalEnv;
+  if(!validate(code))
+    return;
   let parsed = parseCode(code);
   //console.log("Parsed code: ");
   //console.log(parsed);
