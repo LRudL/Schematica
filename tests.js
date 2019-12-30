@@ -149,22 +149,28 @@ function performTests() {
       }
     }
   }
+  /*
   function numberOfTests(tests) {
     let sum = 0;
     for (let i = 0; i < tests.length; i++) {
       for (let j = 1; j < tests[i].length; j++) {
-        ++sum;
+        ++sum; // really?
       }
     }
     return sum;
   }
+  */
+  let numberOfTests = -tests.length;
+  for(let i = tests.length; i--;)
+    numberOfTests += tests[i].length;
+
   let resultsArray = [];
   tests.forEach(category => testCategory(category));
   if (resultsArray.length == 0) {
-    console.log("Lisk implementation successfully validated with " + numberOfTests(tests) + " tests");
+    console.log("Lisk implementation successfully validated with " + numberOfTests + " tests");
     return true;
   } else {
-    console.log(resultsArray.length + "/" + numberOfTests(tests) + " tests failed. Details:");
+    console.log(resultsArray.length + "/" + numberOfTests + " tests failed. Details:");
     console.log(resultsArray);
     return false;
   }

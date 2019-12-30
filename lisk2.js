@@ -7,9 +7,64 @@ producing the exact output yet, but I think it will do better in the long run. A
 the regex took about half the time.
 */
 const stackLimit = 1 << 10, loopLimit = 1 << 15, epsilon = 1e-10, // epsilon is the true error term. STATS/ECON KNOWLEDGE
+  floatEq = (a, b) => Math.abs(a - b) < epsilon,
+  rotl = (x, d) => (x << d) | (x >>> (32 - d)),
+  xoroshiro64 = (x, y) => { // gotta need some sort of seeded deterministic random generator
+    const f = () => { // especially for drawing applications
+      const r = Math.imul(x, 0x9E3779BB) >>> 0, t = x ^ y;
+      x = rotl(x, 26) ^ t ^ (t << 9);
+      y = rotl(t, 13);
+      return r;
+    };
+    f.float = () => f() * 2.3283064365386963e-10;
+    f.seed = (a, b) => {
+      x = a;
+      y = b;
+    };
+    return f;
+  },
+  rand = xoroshiro64(Date.now(), performance.now()),
   stringToken = /"(\\?[^\\"]|\\\\|\\")*"/g, // magic
   token = /('?\(|\)|"(\\?[^\\"]|\\\\|\\")*"|[^()\s"]+)/g, // more magic
-  ccss = ["color:white;background-color:red;","color:unset;background-color:unset;","color:yellow"]; // console can be colorful! see validate()
+  ccss = ["color:white;background-color:red;","color:unset;background-color:unset;","color:yellow"], // console can be colorful! see validate()
+  env = Object.create(null);
+env['+'] = arr => arr.reduce((a, b) => a + b);
+env['-'] = arr => arr.reduce((a, b) => a - b);
+env['*'] = arr => arr.reduce((a, b) => a * b);
+env['/'] = arr => arr.reduce((a, b) => a / b);
+env['='] = arr => {
+  const last = arr.pop(); // pop is more efficient than shift
+  return arr.every(x => floatEq(last, x));
+};
+env['=='] = arr => {
+  const last = arr.pop();
+  return arr.every(x => last >= x && x >= last);
+};
+env['>'] = arr => {
+  const first = arr.shift();
+  return arr.every(x => first > x);
+};
+env['<'] = arr => {
+  const first = arr.shift();
+  return arr.every(x => first < x);
+};
+env['>='] = arr => {
+  const first = arr.shift();
+  return arr.every(x => first > x);
+};
+env['<='] = arr => {
+  const first = arr.shift();
+  return arr.every(x => first < x);
+};
+env.mod = (x, y) => x - Math.floor(x / y) * y;
+env.ln = Math.log;
+env.log = (x, y = Math.E) => Math.log(x) / Math.log(y);
+env.if = (predicate, consequent, alternative) => predicate ? consequent : alternative;
+env.quote = x => x;
+env.seed = (x = Date.now(), y = 0x5F375A86) => rand.seed(x, y);
+env.random = (x = 0, y = 1) => rand.float() * (y - x) + x;
+env.randInt = (x = 0xffffffff) => rand() % x;
+
 const time = (fn, args) => { // record function time
   console.time(fn.name);
   const res = fn(args);
@@ -91,13 +146,15 @@ const time = (fn, args) => { // record function time
     }
   }
   return program; // there, a nested array.
-}, execute = (...arr) => { // for non-nested expressions. This has not been used/tested.
+}, execute = arr => { // for non-nested expressions. This has not been used/tested.
+  /*
   arr.forEach((e, i, a) => {
     if(e[0] == '\'')
       a[i] = this[e.slice(1)];
     else if(this[e])
       a[i] = this[e];
   });
+  */
   const fn = arr.shift();
   switch(fn) {
     case '//':
@@ -141,6 +198,22 @@ const time = (fn, args) => { // record function time
       if(typeof Math[fn] == 'function')
         return Math[fn](...arr);
 
+  }
+}, evaluate = arr => {
+  if(arr.some(x => Array.isArray(x))) {
+    let fn = arr.shift();
+    if(this[fn])
+      fn = this[fn];
+    else
+      console.log('Unknown function ' + fn);
+    for(let i = 0, l = arr.length; i < l; i++)
+      if(this[arr[i]])
+        arr[i] = this[arr[i]];
+      else if(Array.isArray(arr[i]))
+        arr[i] = evaluate(arr[i]);
+    return fn.bind(this, arr);
+  } else {
+    return execute.bind(this, arr);
   }
 }, test = () => {
   const strs = [

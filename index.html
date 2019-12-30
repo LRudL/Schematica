@@ -147,7 +147,8 @@ button:active {
   </div>
 
   <!--EXTERNAL LIBRARIES:-->
-  <script type="text/javascript" src="libraries/jquery.js"></script>
+  <!-- Why are you using jquery? It's 2020... -->
+  <!--script type="text/javascript" src="libraries/jquery.js"></script-->
 
   <script type="text/javascript" src="libraries/svg.min.js"></script>
 
@@ -443,7 +444,7 @@ function savePng() {
 
 
 let showingExportOptions = false;
-$("#export_btn").click(function () {
+export_btn.onclick = function () {
   showingExportOptions = !showingExportOptions;
   if (showingExportOptions) {
     export_dialog.style.display = "inline";
@@ -452,26 +453,26 @@ $("#export_btn").click(function () {
   } else {
     export_dialog.style.display = "none";
   }
-});
+};
 
-$("#export_png_btn").click(function() {
+export_png_btn.onclick = function() {
   savePng();
-  $("#export_btn").click();
-});
-$("#export_svg_btn").click(function() {
+  export_btn.click();
+};
+export_svg_btn.onclick = function() {
   saveSvg();
-  $("#export_btn").click();
-});
-$("#export_tikz_btn").click(function() {
+  export_btn.click();
+};
+export_tikz_btn.onclick = function() {
   window.prompt("Press enter to close", toTikz())
-  $("#export_btn").click();
-})
-$("#tikz_scale_factor_input").on("input", function() {
+  export_btn.click();
+};
+tikz_scale_factor_input.oninput = function() {
   tikzScaleFactor = parseFloat(tikz_scale_factor_input.value);
-})
-$("#png_scale_factor_input").on("input", function() {
+};
+png_scale_factor_input.oninput = function() {
   pngScaleFactor = parseFloat(png_scale_factor_input.value);
-})
+};
 
 
 
@@ -542,7 +543,7 @@ function writeToConsole(text, color) {
   editor2.scrollTop = editor2.scrollHeight;
 }
 
-$("#console_input").keypress(function(event) {
+console_input.onkeypress = function(event) {
   if (event.keyCode == 13) {
     let txt = console_input.value;
     console_input.value = "";
@@ -568,30 +569,30 @@ $("#console_input").keypress(function(event) {
       writeToConsole("< " + output2String(finalReturnVal), consoleReturnColor);
     }
   }
-})
+};
 
-$("#about_btn").click(function() {
+about_btn.onclick = function() {
   window.open("about.html");
-});
+};
 
-$("#help_btn").click(function() {
+help_btn.onclick = function() {
   window.open("help.html");
-})
+};
 
-$("#library_btn").click(function() {
+library_btn.onclick = function() {
   showingLibrary = !showingLibrary;
   if (showingLibrary) {
     userCode = editor.getValue();
     editor.setValue(libraryCode);
-    $("#library_btn")[0].innerHTML = "Show user code";
+    library_btn.textContent = "Show user code";
   } else {
     libraryCode = editor.getValue();
     editor.setValue(userCode);
-    library_btn.innerHTML = "Show library";
+    library_btn.textContent = "Show library";
   }
-});
+};
 
-$("#switch_btn").click(function() {
+switch_btn.onclick = function() {
   editorOnLeft = !editorOnLeft;
   if (editorOnLeft) {
     left.style.left = "0";
@@ -602,21 +603,21 @@ $("#switch_btn").click(function() {
     right.style.left = "0";
     switch_btn.innerText = "<";
   }
-})
-
+};
+/*
 editor.on("cursorActivity", function() {
   editor.matchBrackets();
   // ^ there should be no need for this because CodeMirror should call this automatically ...
 })
-
-$("#render_btn").click(function() {
+*/
+render_btn.onclick = function() {
   deleteDrawItems();
   // drawItems = drawFromCommandList(drawCommands(getProcessedCode()));
   resetGlobalEnv();
   drawItems = [];
   /* ^ The weird jQuery stuff converts the tag-filled html code stored in libraryCode
       into what it would be if you did .innerText on a div containing the same. */
-  let timeText = "Running time: ";
+  let timeText = "Running time";
   console.time(timeText);
   if (showingLibrary) {
     le(getProcessedCode(editor.getValue())); // runs the default library (because the library is showing)
@@ -632,14 +633,12 @@ $("#render_btn").click(function() {
   //le(getProcessedCode(editor.getValue()))
   console.timeEnd(timeText);
   handleOutput(liskOutput);
-});
-
+};
 
 if (!performTests()) alert("Automatic tests failed to validate the Lisk implementation – see browser console for details");
 resetGlobalEnv();
 
 render_btn.click();
-
 
   </script>
 </body>

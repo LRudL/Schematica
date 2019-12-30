@@ -1,4 +1,3 @@
-
 let liskOutput = [];
 // ^array of output objects (in specified format).
 /* Lisk drawing and printing functions send output commands here, assuming that
@@ -35,7 +34,7 @@ function liskEval(expr, env) {
     if (isSelfEvaluating(expr)) {
       return expr;
     } else {
-      if (isPrimitiveProcedure(expr)) {
+      if (getPrimitiveProcedure(expr)) {
         return makeProcedure(false, expr, env);
       }
       let varVal = env.get(expr);
@@ -203,7 +202,7 @@ class Macro {
     let bindings = {};
     for (let i = 0; i < template.length; i++) {
       if (Array.isArray(template[i])) {
-        $.extend(bindings, Macro.BindingFinder(template[i], input[i]));
+        Object.assign(bindings, Macro.BindingFinder(template[i], input[i]));
         // ^ merges any bindings found in the sub-array into the bindings object
       } else if (typeof template[i] == "string" && template[i][0] == "#") {
         // note: # is a special character used to indicate a "slot" for an input in a macro definition
@@ -354,17 +353,31 @@ function liskListEval(exprList, env) {
   }
   return liskEval(exprList[exprList.length-1], env);
 }
-
+/*
 function isPrimitiveProcedure(procName) {
   if (getPrimitiveProcedure(procName) == false) return false;
-  return true;
+  return true; /// why say more words when less ok
 }
-
+*/
 function floatingEq(a, b) {
   return Math.abs(a - b) < floatingPrecision;
 }
 
 function arrayEq(ra, rb, nonExactEqualityTesting) {
+  if(ra >= rb && rb >= ra) { // hack
+    return true;
+  } else if(nonExactEqualityTesting) {
+    if(ra === rb) return true;
+    if(ra === undefined || rb === undefined) return false;
+    if(+ra.length === +rb.length) {
+      for(let i = ra.length; i--;)
+        if(!arrayEq(ra[i], rb[i])) return false;
+      return true;
+    }
+    return floatingEq(ra, rb);
+  }
+  return false;
+  /*
   let isA = Array.isArray(ra);
   let isB = Array.isArray(rb);
   if (isA !== isB) return false; // one is array and the other isn't
@@ -379,6 +392,7 @@ function arrayEq(ra, rb, nonExactEqualityTesting) {
     if (!arrayEq(ra[i], rb[i])) return false;
   }
   return true;
+  */
 }
 
 function getPrimitiveProcedure(procName, env) {
