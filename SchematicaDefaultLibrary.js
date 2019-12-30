@@ -81,7 +81,7 @@ let libraryCode = `(// Schematica Default Library (SDL)
   (/ (accumulate l + 0) (length l)))
 
 (def (average-of-coords l)
-  (if (not (list? l)) (set l _arguments))
+  (if (coord? l) (set l _arguments))
   (let coord-sums
        (accumulate (map cdr l)
                    (! (c val)
@@ -347,10 +347,10 @@ let libraryCode = `(// Schematica Default Library (SDL)
 
 (def (arrow start end stroke angle size)
   (rep angle (/ pi 4))
-  (rep scale (/ (distance start end) 6))
+  (rep size (/ (distance start end) 6))
   (let scaled-vect (((points->vect start end) 'norm) '* size))
-  (let rvect (scaled-vect 'rotated (+ e-angle angle)))
-  (let lvect (scaled-vect 'rotated (- e-angle angle)))
+  (let rvect (scaled-vect 'rotated (+ pi angle)))
+  (let lvect (scaled-vect 'rotated (- pi angle)))
   (lseg end (coord+vect end rvect) stroke)
   (lseg end (coord+vect end lvect) stroke)
   (lseg start end stroke))
@@ -496,6 +496,8 @@ let libraryCode = `(// Schematica Default Library (SDL)
 
 (group stroke-style (width 1) (color "black") (style "solid"))
 (group text-style (size 16) (color "black") (styling "") (font "Baskerville"))
+
+(let no-stroke (stroke-style (width: 0)))
 
 (def (text content loc style)
   (rep loc (rand-point)) (rep style (text-style))

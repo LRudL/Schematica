@@ -528,6 +528,16 @@ function getPrimitiveProcedure(procName, env) {
       return function() {
         return argsToArray(arguments).reduce((acc, val) => acc.concat(val));
       }
+    case "slice":
+      return function(l, s, e) {
+        return l.slice(s, e);
+      }
+    case "reverse":
+      return l => l.reverse();
+    case "cons":
+      return function(el, l) {
+        return [el].concat(l);
+      }
 
     // STRING FUNCTIONS
     case "string?": return str => boolConvert(typeof str === "string");
