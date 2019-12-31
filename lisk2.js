@@ -1,11 +1,4 @@
 'use strict';
-/* Note:
-I'm only committing this file right now so that you don't need to resolve merge conflicts.
-I actually already removed the jquery dependency on my branch, which didn't cause any problems.
-parse(libraryCode) is *only* twice as fast as running parseCode(libraryCode) on Firefox, and it's not
-producing the exact output yet, but I think it will do better in the long run. Also, just running
-the regex took about half the time.
-*/
 const stackLimit = 1 << 10, loopLimit = 1 << 15, epsilon = 1e-10, // epsilon is the true error term. STATS/ECON KNOWLEDGE
   floatEq = (a, b) => Math.abs(a - b) < epsilon,
   rotl = (x, d) => (x << d) | (x >>> (32 - d)),
@@ -24,74 +17,193 @@ const stackLimit = 1 << 10, loopLimit = 1 << 15, epsilon = 1e-10, // epsilon is 
     return f;
   },
   rand = xoroshiro64(Date.now(), performance.now()),
+  time = (fn, args) => { // record function time
+    console.time(fn.name);
+    const res = fn(args);
+    console.timeEnd(fn.name);
+    return res;
+  },
+  createErrorObj = console.log.bind(console), // polyfill...
   stringToken = /"(\\?[^\\"]|\\\\|\\")*"/g, // magic
   token = /('?\(|\)|"(\\?[^\\"]|\\\\|\\")*"|:|[^()\s":]+)/g, // more magic
-  ccss = ["color:white;background-color:red;","color:unset;background-color:unset;","color:yellow"], // console can be colorful! see validate()
+  // ccss = ["color:white;background-color:red;","color:unset;background-color:unset;","color:yellow"], // console can be colorful! see validate()
   env = Object.create(null); // empty prototype chain
-env['+'] = arr => arr.reduce((a, b) => a + b);
-env['-'] = arr => arr.reduce((a, b) => a - b);
-env['*'] = arr => arr.reduce((a, b) => a * b);
-env['/'] = arr => arr.reduce((a, b) => a / b);
-env['='] = arr => {
+// This is the global environment variable. All SDL functions should eventually be implemented here rather than parsed every time through lisk.
+// The prototype of env is null, which has no properties. This means env.toString and similar Object properties do not exist on env.
+// Stack count and loop count are not implemented yet. Instead of putting it in env I think they need their own global variables.
+// To create a new environment based on env, do Object.create(env). All old properties are inherited from env, but new additions will not affect env.
+// I have no clue how to implement macros using this approach. Also, recursive functions don't work.
+env['#f'] = env['#F'] = false; // booleans and undefined
+env['#t'] = env['#T'] = true;
+env['#u'] = env['#U'] = undefined;
+env.pi = Math.PI; // constants
+env.e = Math.E;
+env.tau = Math.PI * 2;
+env['pi/2'] = Math.PI / 2;
+env['canvas-width'] = 960;
+env['canvas-height'] = 973;
+env['canvas-scale'] = 960;
+env['+'] = (...arr) => arr.reduce((a, b) => a + b); // arithmetic
+env['-'] = (...arr) => arr.reduce((a, b) => a - b);
+env['*'] = (...arr) => arr.reduce((a, b) => a * b);
+env['/'] = (...arr) => arr.reduce((a, b) => a / b);
+env['='] = (...arr) => { // approximate equality
   const last = arr.pop(); // pop is more efficient than shift
   return arr.every(x => floatEq(last, x));
 };
-env['=='] = arr => {
+env['=='] = (...arr) => { // true equality
   const last = arr.pop(); // screw what people say; prematurely ignoring premature optimization is the root of all evil.
   return arr.every(x => last >= x && x >= last);
 };
-env['>'] = arr => {
+env['>'] = (...arr) => { // inequalities
   const first = arr.shift();
   return arr.every(x => first > x);
 };
-env['<'] = arr => {
+env['<'] = (...arr) => {
   const first = arr.shift();
   return arr.every(x => first < x);
 };
-env['>='] = arr => {
+env['>='] = (...arr) => {
   const first = arr.shift();
-  return arr.every(x => first > x);
+  return arr.every(x => first >= x);
 };
-env['<='] = arr => {
+env['<='] = (...arr) => {
   const first = arr.shift();
-  return arr.every(x => first < x);
+  return arr.every(x => first <= x);
 };
-env['//'] = () => undefined;
+env['//'] = () => undefined; // comment
+env.eval = function _eval(arr) { // eval is part of environment, just like any other normal function.
+  // The value of `this` changes based on what called eval. If a subenvironment calls eval, this points to that specific subenvironment.
+  // This makes it suitable to store local variables.
+  //debugger;
+  if(!Array.isArray(arr)) // if not evaluating an expression
+    return this.get(arr); // hopefully arr is self-evaluating.
+  let fn = arr.shift(); // get function name, also remove it from arr. Now arr[0] is the first argument in fn.
+  if(fn === undefined) // if the array is somehow empty... what do we do here?
+    return; // ahhh panic
+  if(Array.isArray(fn)) // if fn itself is a list - evaluate until it's not...
+    fn = this.eval(fn); // might not be the best way
+  if(fn == '!' || fn == 'lambda') { // defining a lambda (the hard part)
+    if(Array.isArray(arr[0])) // if first argument is an array
+      return this.lambda(arr.shift(), arr); // pass (args, body) into this.lambda
+    return this.lambda([arr.shift()], arr); // otherwise just make it an array anyway
+  }
+  if(fn == 'if') // evaluate predicate, then evaluate consequent or alternative
+    return this.eval(this.eval(arr[0]) ? arr[1] : arr[2]);
+  if(fn == 'def') // def is just syntactic sugar for lambda; arr[0].shift() gets the function name and make arr[0] an array of argument names.
+    return this[arr[0].shift()] = this.lambda(arr.shift(), arr); // arr.shift() returns arr[0] and make arr an array of function body expressions.
+  if(fn == 'quote')
+    return arr[0];
+  for(let i = 0, l = arr.length; i < l; ++i) { // evaluate any nested expressions
+    const arg = arr[i];
+    if(Array.isArray(arg) && arg[1] != ':') // unless it appears to be a named argument
+      arr[i] = Object.create(this).eval(arg); // Object.create(this) so that whatever happens won't affect `this`
+    else if(this[arg] !== undefined) // if arg is a defined variable, return it.
+      arr[i] = this[arg];
+  }
+  if(typeof this[fn] == 'function') // if fn is a defined function in `this`, call it.
+    return this[fn](...arr);
+  else if(typeof fn == 'function') // if fn is already a function, apply it in the context of `this`
+    return fn.apply(this, arr);
+  return fn; // what is this?? (probably wrong and buggy)
+};
+env.lambda = function _lambda(args, body) { // here we go!
+  const subEnv = Object.create(this); // subenvironment
+  for(let i = args.length; i--;)
+    subEnv[args[i]] = undefined; // extend subEnv with undefined (TODO: maybe add option for default arg value?)
+  return function(...arr) { // returns a function that takes multiple args
+    for(let i = 0, l = Math.min(arr.length, args.length); i < l; ++i) { // for each arg in arr (supplied args), excluding those out of range
+      const arg = arr[i];
+      if(Array.isArray(arg) && arg[1] == ':' && args.indexOf(arg[0]) >= 0) // if arg is a named argument
+        subEnv[arg[0]] = arg[2]; // fill in value of subEnv[arg[0]]
+      else // The spec isn't very clear about what to do when mixing named and unnamed arguments. Hopefully no one ever does that.
+        subEnv[args[i]] = arg; // fill in value of next arg
+    }
+    let result;
+    for(const expr of body) // execute expr in order
+      result = subEnv.eval(expr);
+    return result;
+  };
+};
 env.ln = Math.log;
-env.log = (x, y = Math.E) => Math.log(x) / Math.log(y);
-env.mod = (x, y) => x - Math.floor(x / y) * y;
-env.if = (predicate, consequent, alternative) => predicate ? consequent : alternative;
-env.quote = x => x;
-env.seed = (x = Date.now(), y = 0x5F375A86) => rand.seed(x, y);
-env.random = (x = 0, y = 1) => rand.float() * (y - x) + x;
+env.log = (x, y = Math.E) => Math.log(x) / Math.log(y); // my personal preference
+env.mod = (x, y) => x - Math.floor(x / y) * y; // also my personal preference; remainder and modulo are two different things.
+/*
+env.if = function _if(predicate, consequent, alternative) { // this isn't being used.
+  return this.eval(this.eval(predicate) ? consequent : ealternative);
+};
+*/
+// env.random = (x = 0, y = 1) => Math.random() * (y - x) + x; // you need some control over the randomness. Math.random doesn't give you any.
+// env.randInt = (x = 0xffffffff) => (Math.random() * 4294967296 >>> 0) % x;
+env.seed = (x = Math.random() * 4294967296 >>> 0, y = 0x5F375A86) => rand.seed(x, y); // call without arguments to seed randomly
+env.random = (x = 0, y = 1) => rand.float() * (y - x) + x; // This way you can have both deterministic and nondeterministic randomness.
 env.randInt = (x = 0xffffffff) => rand() % x;
-env.let = function(x, y) { // I HAVE NO IDEA HOW TO MAKE THIS WORK
+env.get = function _get(x) { // get primitive value (this is probably the wrong way to do it too)
+  if(typeof x == 'number' || typeof x == 'function' || (x[0] == '"' && x[x.length - 1] == '"'))
+    return x;
+  return this[x]; // <-- problems
+};
+env.let = function _let(x, y) { // sets variable; hopefully x isn't a list or something
   if(this[x] !== undefined)
-    console.log(`${x} is already defined as ${this[x]} in the current scope; set is preferred for redefining ${x}.`)
-  this[x] = y;
+    console.log(`${x} is already defined as ${this[x]} in the current scope; set is preferred for redefining a variable.`);
+  return this[x] = this.eval(y);
 };
-env.set = function(x, y) {
+env.set = function _set(x, y) { // function declaration is required because we need to use the correct `this`
   if(this[x] === undefined)
-    console.log(`${x} is undefined in the current scope; let is preferred for defining for the first time.`);
-  this[x] = y;
+    console.log(x + ' is undefined in the current scope; let is preferred for defining a variable for the first time.');
+  return this[x] = this.eval(y);
 };
-for(const key of Object.getOwnPropertyNames(Math)) {
+/* // defined in env.eval
+env.def = function _def(fnarg, ...expr) {
+  let name = fnarg.shift();
+  if(Array.isArray(name))
+    name = evaluate(name, this);
+  return this[name] = this.lambda(fnarg, ...expr);
+};
+*/
+env.not = x => !x; // logic functions
+env.and = (...arr) => arr.every(x => x); // arr.every and arr.some actually follows the rules that and() -> true and or() -> false
+env.or = (...arr) => arr.some(x => x);
+env.xor = (...arr) => arr.reduce((a, b) => a != b, false); // It's kind of amazing that this just works with any number of arguments
+env.print = (...arr) => console.log(...arr); // logging; TODO: hook up to liskOutput
+env.length = arr => arr.length; // array functions
+env.first = env.car = x => x[0];
+env.rest = env.cdr = x => x.slice(1);
+env.last = x => x[x.length - 1];
+env.append = (arr, ...elem) => arr.concat(elem); // does not change arr
+env.prepend = (arr, ...elem) => elem.concat(arr);
+env.map = function _map(op, arr) { return arr.map(this.eval(op)); }; // problems; arr could contain defined variables and op might not take care of it.
+env.filter = function _filter(op, arr) { return arr.filter(this.eval(op)); }; // TODO: go through for loop and get values first
+env['list-merge'] = function _list_merge(arr1, arr2, op) { // Untested
+  const l = Math.min(arr1.length, arr2.length), arr = new Array(l);
+  for(let i = 0; i < l; ++i) {
+    if(this[arr1[i]])
+      arr1[i] = this[arr1[i]];
+    if(this[arr2[i]])
+      arr2[i] = this[arr2[i]];
+    arr[i] = this.eval(op).apply(this, arr1[i], arr2[i]);
+  }
+  return arr;
+};
+env.concat = (...arr) => [].concat(...arr); // correct way to use concat; no need for [].reduce here.
+env.reverse = arr => arr.slice().reverse(); // make copy to avoid problems
+env['function?'] = (...arr) => arr.every(x => typeof x == 'function'); // type checking functions
+env['number?'] = (...arr) => arr.every(x => typeof x == 'number');
+env['list?'] = (...arr) => arr.every(x => Array.isArray(x));
+env['string?'] = (...arr) => arr.every(x => { stringToken.lastIndex = 0; return stringToken.exec(x)[0] == x; });
+env['undefined?'] = (...arr) => arr.every(x => x == '#u' || typeof x == 'undefined');
+env['boolean?'] = (...arr) => arr.every(x => x == '#f' || x == '#t' || typeof x == 'boolean');
+for(const key of Object.getOwnPropertyNames(Math)) { // add all of Math methods that are not already defined
   if(key == 'toSource') continue; // this is a firefox thing... must remove.
   if(typeof Math[key] == 'function' && env[key] === undefined)
-    env[key] = Math[key];
+    env[key] = Math[key]; // e.g. sin, cos, atan2, etc.
 }
 
-const time = (fn, args) => { // record function time
-  console.time(fn.name);
-  const res = fn(args);
-  console.timeEnd(fn.name);
-  return res;
-};
 const validate = str => {
   str = str.replace(stringToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
-  for(let i = 0, l = str.length; i < l; i++) {
+  for(let i = 0, l = str.length; i < l; ++i) {
     switch(str[i]) {
       case '\n':
         ++line;
@@ -126,9 +238,7 @@ const validate = str => {
     return false;
   }
   return true;
-};
-
-function parseCode(str) {
+}, parseCode = str => {
   const matches = str.match(token), program = [], path = [];
   if(matches == null) return program;
   let quoteDepth = 0, temp = program;
@@ -139,11 +249,9 @@ function parseCode(str) {
       path.push(temp.length - 1, 1);
       temp = temp[temp.length - 1][1];
       ++quoteDepth;
-    } else if(match[0] == '\'') {
-      //if(match == '\'!') // moved to key == '!'
-        //match = ' lambda';
+    } else if(match[0] == '\'')
       temp.push(["quote", match.slice(1)]);
-    } else if(match == '(') {
+    else if(match == '(') {
       temp.push([]);
       path.push(temp.length - 1);
       temp = temp[temp.length - 1];
@@ -160,118 +268,31 @@ function parseCode(str) {
     } else {
       if(!isNaN(+match))
         match = +match;
-      //else if(match == '!')
-        //match = 'lambda';
       temp.push(match);
     }
   }
   return program;
-};
-
-const execute = arr => { // for non-nested expressions. This has not been used/tested.
-  /*
-  arr.forEach((e, i, a) => {
-    if(e[0] == '\'')
-      a[i] = this[e.slice(1)];
-    else if(this[e])
-      a[i] = this[e];
-  });
-  */
-  const fn = arr.shift();
-  switch(fn) {
-    case '//':
-      return;
-    case '=':
-      return Math.abs(arr[0] - arr[1]) < epsilon;
-    case '==':
-      if(Array.isArray(arr[0]) == Array.isArray(arr[1])) // both arr/both number: ok
-        return arr[0] >= arr[1] && arr[1] >= arr[0]; // problem is 1 >= [1] >= 1
-      return false;
-    case '+':
-      return arr.reduce((a, b) => a + b);
-    case '-':
-      return arr.reduce((a, b) => a - b);
-    case '*':
-      return arr.reduce((a, b) => a * b);
-    case '/':
-      return arr.reduce((a, b) => a / b);
-    case '>':
-      return arr.shift() > Math.max(...arr); // UNTESTED, MIGHT BE BUGGY
-    case '<':
-      return arr.shift() < Math.min(...arr);
-    case '>=':
-      return arr.shift() >= Math.max(...arr);
-    case '<=':
-      return arr.shift() <= Math.min(...arr);
-    case 'mod':
-      return arr[0] - Math.floor(arr[0] / arr[1]) * arr[1];
-    case 'ln':
-      return Math.log(arr[0]);
-    case 'log': // I like this design better: ln is log, log is log with any base
-      return Math.log(arr[1]) / Math.log(arr[0] || Math.E); // (log a b) => log_a (b)
-    case 'let':
-      this[arr[0]] = arr[1]; // haven't really thought about how to implement variable scope/environment
-      return;
-    case 'quote':
-      return arr;
-    case 'if':
-      return arr[0] ? arr[1] : arr[2];
-    default:
-      if(typeof Math[fn] == 'function')
-        return Math[fn](...arr);
-
-  }
-}, evaluate = arr => {
-  if(arr.some(x => Array.isArray(x))) {
-    let fn = arr.shift();
-    if(this[fn])
-      fn = this[fn];
-    else
-      console.log('Unknown function ' + fn);
-    for(let i = 0, l = arr.length; i < l; i++)
-      if(this[arr[i]])
-        arr[i] = this[arr[i]];
-      else if(Array.isArray(arr[i]))
-        arr[i] = evaluate(arr[i]);
-    return fn.bind(this, arr);
-  } else {
-    return execute.bind(this, arr);
-  }
+}, run = code => {
+  if(!validate(code)) return;
+  const program = parseCode(code), subEnv = Object.create(env); // avoid changing original env
+  let result;
+  for(const expr of program) // evaluate each expression in program in order, return value of the last
+    result = subEnv.eval(expr);
+  return result;
 }, test = () => {
-  const strs = [
-    '(a \'(0 (1 2)) b) (c d (e) \'f)',
-    `(let bound-lines
-     (map (! (pair)
-             (let p0 (nth pair 0))
-             (let p1 (nth pair 1))
-             (cline-from-points
-              (x-of p0) (y-of p0)
-              (x-of p1) (y-of p1)))
-          (pair-adjacents
-           (append canvas-corners
-                   (first canvas-corners)))))`,
-    `(def (list-merge a b op)
-  (def (merger a b op res)
-    (if (= (length a) 0)
-      res
-      (merger (rest a) (rest b) op
-        (concat res (list (op (first a) (first b)))))))
-  (merger a b op '()))
-
-(def (pair-adjacents l)
-  (def (pairer l n res)
-    (if (= n (length l))
-      res
-      (pairer l (++ n)
-              (append res
-                      (list (nth l (-- n))
-                            (nth l n))))))
-  (pairer l 1 '()))`
+  const tests = [
+    ['let', '(let x 42) (* x x)', 1764], // expected output for the first 4 tests are produced by lisk.js le()
+    ['lambda/if/scope', '(let f (! (x y) (let r2 (+ (* x x) (* y y))) (sqrt r2))) (let dist (f 3 4)) (if (= r2 25) "wrong" dist)', 5],
+    ['def', '(def (f x) (if (= (mod x 2) 1) (+ 1 (* 3 x)) (/ x 2))) (f 27)', 82],
+    ['named args', '(def (expmod base power modulus) (mod (pow base power) modulus)) (expmod (power: 7) (modulus: 19) (base: 5))', 16],
+    ['prng', '(seed 123 456) (random) (floor (random 0 65536))', 9661], // probably useful
+    ['type', '(and (function? (! x x)) (number? -0) (string? "\\\" )\'") (boolean? #t) (list? \'(1 (2 3) 4)))', true], // probably works
+    ['recursion', '(def (factorial x) (if (== x 1) x (* x (factorial (- x 1))))) (factorial 4)', 24] // <-- problems
+    //['list/composite', '(def (f x) (* x 3)) (def (g x) (+ x 1)) (def (composite fns) (if (= (length fns) 1) (car fns) ((car fns) (composite (cdr fns)))))', undefined] // <-- future problems
   ];
-  for(let i = 3; i--;)
-    console.log(validate(strs[i]));
-  for(let i = 3; i--;)
-    console.log(parseCode(strs[i]).toSource());
-};
+  for(const t of tests) {
+    const r = run(t[1]);
+    console.log(t[0], r, t[2], r == t[2]);
+  }
+}
 test();
-// console.log(time(parse,libraryCode).toSource()); // should parse the standard library in ~8ms
