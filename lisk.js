@@ -16,158 +16,152 @@ const loopLimit = 1 << 15;
 
 const floatingPrecision = 1e-10;
 
-let evals = 0;
+//let evals = 0;
 
 function liskEval(expr, env) {
-  ++evals;
+  //++evals;
   // expr should be a (possibly nested) array, of the type produced by parseCode
   // (if you want to eval a string, use parseCode first, or the "le" function at the defiend bottom of this file)
   // expr should be a single statement
   // (if you want to eval a program consisting of many statements, use liskListEval, or just use le directly)
   if (env.stackLevel > stackLimit) {
-    console.log("Stack limit (" + stackLimit + ") exceeded when evaluating expression: ");
-    console.log(expr);
+    console.log("Stack limit (" + stackLimit + ") exceeded when evaluating expression:\n", expr);
     createErrorObj("Execution exceeded stack limit (" + stackLimit + ")", "Expression: " + expr);
     return "#u"; // #u is the undefined value (compare #t and #f for true and false respectively)
   }
   if (typeof expr != "object") { // arrays are objects, so this is a test for whether expr is an array (=list)
-    if (isSelfEvaluating(expr)) {
+    if (isSelfEvaluating(expr))
       return expr;
-    } else {
-      if (getPrimitiveProcedure(expr)) {
-        return makeProcedure(false, expr, env);
-      }
-      let varVal = env.get(expr);
-      if (varVal === false) {
-        createErrorObj("Unknown variable", "The \"variable\" in question: " + expr);
-      }
-      return varVal;
+    if (getPrimitiveProcedure(expr))
+      return makeProcedure(false, expr, env);
+    let varVal = env.get(expr);
+    if (varVal === false) {
+      createErrorObj("Unknown variable", "The \"variable\" in question: " + expr);
     }
-  } else { // expression is a list
-    let key = expr[0];
-    if (key == "quote") {
-      return expr[1];
-    }
-    if (key == "let") {
-      let value = liskEval(expr[2], env);
-      defineVariable(expr[1], value, env);
-      return value;
-    }
-    if (key == "set") {
-      let value = liskEval(expr[2], env);
-      setVariable(expr[1], value, env);
-      return value;
-    }
-    if (key == "if") {
-      let predicate = expr[1];
-      let consequent = expr[2];
-      let alternative = expr[3];
-      let truthValue = isTrue(liskEval(predicate, env));
-      if (truthValue) {
-        return liskEval(consequent, env);
-      } else {
-        if (alternative == undefined) return "#u";
-        return liskEval(alternative, env);
-      }
-    }
-    if (key == "cond") {
-      let condExprs = expr.slice(1);
-      for (let i = 0; i < condExprs.length; i++) {
-        let predicate = condExprs[i][0];
-        let consequent = condExprs[i].slice(1);
-        if (isTrue(liskEval(predicate, env))) {
-          return liskListEval(consequent, env);
-        }
-      }
-      return "#u"; // return undefined value if no matching cond expression
-    }
-    if (key == "begin") {
-      return liskListEval(expr.slice(1), env); // evaluates all expressions in the list and then returns the last
-    }
-    if (key == "for") {
-      let loopVar = expr[1];
-      let i = liskEval(expr[2], env);
-      let nextExpr = expr[4];
-      let endExpr = expr[3];
-      let loopExprs = expr.slice(5);
-      let newEnv = new Environment(env);
-      let count = 0;
-      defineVariable(loopVar, i, newEnv);
-      let val = "#u";
-      while (liskEval(endExpr, newEnv) == "#t") {
-        val = liskListEval(loopExprs, newEnv);
-        let nextLoopVarValue = liskEval(nextExpr, newEnv);
-        setVariable(loopVar, nextLoopVarValue, newEnv);
-        i = nextLoopVarValue;
-        ++count;
-        if (count > loopLimit) {
-          createErrorObj("Your for-loop looped too much:", output2String(expr));
-          return "#u";
-        }
-      }
-      return val;
-    }
-    if (key == "for-each") {
-      let loopVar = expr[1];
-      let list = liskEval(expr[2], env);
-      let loopExprs = expr.slice(3);
-      let val = "#u";
-      for (let i = 0; i < list.length; i++) {
-        let newEnv = new Environment(env);
-        defineVariable(loopVar, list[i], newEnv);
-        val = liskListEval(loopExprs, newEnv);
-      }
-      return val;
-    }
-    if (key == "lambda" || key == "!") {
-      let parameters = expr[1];
-      if (Array.isArray(parameters)) {
-        return makeProcedure(expr[1], expr.slice(2), env);
-      } else return makeProcedure([expr[1]], expr.slice(2), env);
-      // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here)
-    }
-    if (key == "//") return "#u"; // <-- used for commenting; for instance: (// a sample comment)
-    if (key == "macro") {
-      macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
-      return "#u";
-    }
-    if (macros[key] !== undefined) {
-      // ^ ... then an expression starting with key has previously been defined as some macro
-      return liskEval(macros[key].expand(expr), env);
-    }
-    /* if none of the previous cases apply, we assume that key is a procedure,
-    and apply it to the arguments in the rest of the list */
-    let procedure;
-    if (!isProcedure(key)) {
-      procedure = liskEval(key, env);
-    } else procedure = key; // <-- currently this would only happen when a for-loop is being evaluated
-    if (!isProcedure(procedure)) {
-      createErrorObj("Non-procedure object treated as procedure", "This is not a procedure in the current scope: " + output2String(key));
-    }
-    if (procedure[1].parameters === false) {
-      // ^ this implies that it's a primitive procedure
-      /* This is because of implementation details: primitive procedure parameters
-         are not declared separately anywhere, but for defined procedures parameters
-         must of course be defined, and are included in the procedure object when the
-         procedure is defined (see makeProcedure)
-      */
-      return applyPrimitiveProcedure(procedure[1].body, listOfValues(expr.slice(1), env), env);
-    } else {
-      let newEnv = envWithArgs(procedure[1].parameters, expr.slice(1), procedure[1].environment, env);
-      return applyProcedure(procedure, newEnv);
-      /* Note difference between newEnv (the environment used when executing the procedure body)
-         and env (the current environment, and in which the arguments to the function are evaluated). */
-      /* Arguments cannot be evaluated at this point, because named arguments are implemented and
-         the differentiation between named vs unnamed arguments is done in the envWithArgs function.
-         Thus env is passed to envWithArgs to allow for argument evaluation, in addition to the procedure's
-         environment (which is stored because it allows for closures).*/
-    }
+    return varVal;
   }
+  let key = expr[0]; // expression is a list
+  if (key == "quote") {
+    return expr[1];
+  }
+  if (key == "let") {
+    let value = liskEval(expr[2], env);
+    defineVariable(expr[1], value, env);
+    return value;
+  }
+  if (key == "set") {
+    let value = liskEval(expr[2], env);
+    setVariable(expr[1], value, env);
+    return value;
+  }
+  if (key == "if") {
+    let predicate = expr[1];
+    let consequent = expr[2];
+    let alternative = expr[3];
+    let truthValue = isTrue(liskEval(predicate, env));
+    if (truthValue) {
+      return liskEval(consequent, env);
+    }
+    if (alternative == undefined) return "#u";
+    return liskEval(alternative, env);
+  }
+  if (key == "cond") {
+    // let condExprs = expr.slice(1); // this seems unnecessary; just begin at i = 1?
+    for (let i = 1, l = expr.length; i < l; ++i) {
+      // let predicate = expr[i][0];
+      // let consequent = expr[i].slice(1);
+      if (isTrue(liskEval(expr[i][0], env))) {
+        return liskListEval(expr[i], env, 1);
+      }
+    }
+    return "#u"; // return undefined value if no matching cond expression
+  }
+  if (key == "begin") {
+    return liskListEval(expr, env, 1); // evaluates all expressions in the list and then returns the last
+  }
+  if (key == "for") {
+    let loopVar = expr[1];
+    let i = liskEval(expr[2], env);
+    let nextExpr = expr[4];
+    let endExpr = expr[3];
+    // let loopExprs = expr.slice(5);
+    let newEnv = new Environment(env);
+    let count = 0;
+    defineVariable(loopVar, i, newEnv);
+    let val = "#u";
+    while (liskEval(endExpr, newEnv) == "#t") {
+      val = liskListEval(expr, newEnv, 5);
+      let nextLoopVarValue = liskEval(nextExpr, newEnv);
+      setVariable(loopVar, nextLoopVarValue, newEnv);
+      i = nextLoopVarValue;
+      if (++count > loopLimit) {
+        createErrorObj("Your for-loop looped too much:", output2String(expr));
+        return "#u";
+      }
+    }
+    return val;
+  }
+  if (key == "for-each") {
+    let loopVar = expr[1];
+    let list = liskEval(expr[2], env);
+    // let loopExprs = expr.slice(3);
+    let val = "#u";
+    for (const item of list) {
+      let newEnv = new Environment(env);
+      defineVariable(loopVar, item, newEnv);
+      val = liskListEval(expr, newEnv, 3);
+    }
+    return val;
+  }
+  if (key == "lambda" || key == "!") {
+    let parameters = expr[1];
+    if (Array.isArray(parameters)) {
+      return makeProcedure(parameters, expr.slice(2), env);
+    }
+    return makeProcedure([parameters], expr.slice(2), env);
+    // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here) IT IS HERE NOW
+    // if they're equivalent, just add the other case
+  }
+  if (key == "//") return "#u"; // <-- used for commenting; for instance: (// a sample comment)
+  if (key == "macro") {
+    macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
+    return "#u";
+  }
+  if (macros[key] !== undefined) {
+    // ^ ... then an expression starting with key has previously been defined as some macro
+    return liskEval(macros[key].expand(expr), env);
+  }
+  /* if none of the previous cases apply, we assume that key is a procedure,
+  and apply it to the arguments in the rest of the list */
+  let procedure;
+  if (!isProcedure(key)) {
+    procedure = liskEval(key, env);
+  } else procedure = key; // <-- currently this would only happen when a for-loop is being evaluated
+  if (!isProcedure(procedure)) {
+    createErrorObj("Non-procedure object treated as procedure", "This is not a procedure in the current scope: " + output2String(key));
+  }
+  if (procedure[1].parameters === false) {
+    // ^ this implies that it's a primitive procedure
+    /* This is because of implementation details: primitive procedure parameters
+       are not declared separately anywhere, but for defined procedures parameters
+       must of course be defined, and are included in the procedure object when the
+       procedure is defined (see makeProcedure)
+    */
+    return applyPrimitiveProcedure(procedure[1].body, expr.slice(1).map(e => liskEval(e, env)), env);
+  }
+  let newEnv = envWithArgs(procedure[1].parameters, expr.slice(1), procedure[1].environment, env);
+  return liskListEval(procedure[1].body, newEnv);
+    /* Note difference between newEnv (the environment used when executing the procedure body)
+       and env (the current environment, and in which the arguments to the function are evaluated). */
+    /* Arguments cannot be evaluated at this point, because named arguments are implemented and
+       the differentiation between named vs unnamed arguments is done in the envWithArgs function.
+       Thus env is passed to envWithArgs to allow for argument evaluation, in addition to the procedure's
+       environment (which is stored because it allows for closures).*/
 }
 
 function makeProcedure(parameters, body, environment) {
-  let id = parameters == false ? "primitive" : "function";
-  return [id, {
+  //let id = parameters == false ? "primitive" : "function";
+  return [parameters ? "function" : "primitive", {
     parameters: parameters,
     body: body,
     environment: environment
@@ -177,19 +171,15 @@ function makeProcedure(parameters, body, environment) {
 function isProcedure(proc) {
   // not used by the interpreter (EDIT: NEVER MIND IT IS NOW)
   // (only used to enable the built-in "function?" function for identifying functions)
-  if (Array.isArray(proc) == false) return false;
-  if (proc[0] == "primitive" || proc[0] == "function") return true;
-  return false;
+  return Array.isArray(proc) && (proc[0] == 'primitive' || proc[0] == 'function');
 }
-
+/*
 function applyProcedure(proc, env) {
-  let val = liskListEval(proc[1].body, env);
-  return val;
+  return liskListEval(proc[1].body, env);
 }
-
+*/
 function applyPrimitiveProcedure(proc, argVals, env) {
-  let val = getPrimitiveProcedure(proc, env).apply(null, argVals);
-  return val;
+  return getPrimitiveProcedure(proc, env).apply(null, argVals);
 }
 
 class Macro {
@@ -200,13 +190,13 @@ class Macro {
   }
   static BindingFinder(template, input) {
     let bindings = {};
-    for (let i = 0; i < template.length; i++) {
+    for (let i = 0, l = template.length; i < l; ++i) {
       if (Array.isArray(template[i])) {
         Object.assign(bindings, Macro.BindingFinder(template[i], input[i]));
         // ^ merges any bindings found in the sub-array into the bindings object
       } else if (typeof template[i] == "string" && template[i][0] == "#") {
         // note: # is a special character used to indicate a "slot" for an input in a macro definition
-        if (template[i].slice(template[i].length - 2) == "..") {
+        if (template[i].slice(-2) == "..") { // <-- It's not that bad now
           // and the award for worst special-case syntax in the world goes to ...
           bindings[template[i]] = input.slice(i);
           return bindings;
@@ -217,22 +207,22 @@ class Macro {
     }
     return bindings;
   }
-  static BindingReplacer(bindings, template, expr) {
+  static BindingReplacer(bindings, template) { // how was expr even used
     let expanded = [];
-    for (let i = 0; i < template.length; i++) {
-      if (Array.isArray(template[i])) {
-        expanded.push(Macro.BindingReplacer(bindings, template[i]));
-      } else if (typeof template[i] == "string" && bindings[template[i]] != undefined) {
-        expanded.push(bindings[template[i]]);
+    for (const t of template) {
+      if (Array.isArray(t)) {
+        expanded.push(Macro.BindingReplacer(bindings, t));
+      } else if (typeof t == "string" && bindings[t] != undefined) {
+        expanded.push(bindings[t]);
       } else {
-        expanded.push(template[i]);
+        expanded.push(t);
       }
     }
     return expanded;
   }
   expand(expr) {
     let bindings = Macro.BindingFinder(this.inputFormat, expr);
-    return Macro.BindingReplacer(bindings, this.outputFormat, expr);
+    return Macro.BindingReplacer(bindings, this.outputFormat); // don't pass an argument if it's not used
   }
 }
 
@@ -240,28 +230,33 @@ class Environment {
   constructor(parentEnvironment) {
     this.vars = {};
     this.base = parentEnvironment;
-    this.stackLevel = parentEnvironment === false ? 0 : parentEnvironment.stackLevel + 1;
+    this.stackLevel = parentEnvironment.stackLevel + 1 || 0;
   }
   check(name) { // does a variable exist IN THE CURRENT FRAME?
-    if (this.vars[name] == undefined) return false;
-    return true;
+    return this.vars[name] !== undefined;
   }
   getEnv(name) { // find a variable (if it exists) in any frame; if so, return its environment frame
     if (this.check(name)) return this;
-    if (this.base != false) return this.base.getEnv(name);
+    if (this.base) return this.base.getEnv(name);
     return false;
   }
   get(name) { // return the value of a variable if it exists, or false otherwise
-    return this.getEnv(name) == false ? false : this.getEnv(name).vars[name];
+    // this.getEnv is recursive; don't make it run twice.
+    const envVar = this.getEnv(name);
+    return envVar ? envVar.vars[name] : false;
   }
   add(name, val) { // add variable to CURRENT FRAME
     this.vars[name] = val;
   }
   set(name, val) { // changes the value of a variable (wherever in the environment it may be)
-    if (this.check(name) || this.get(name) == false) {
+    if (this.check(name))
       this.add(name, val);
-    } else {
-      this.base.set(name, val);
+    else {
+      const env = this.get(name);
+      if(env)
+        env.add(name, val);
+      else
+        this.add(name, val);
     }
   }
 }
@@ -293,65 +288,64 @@ function envWithArgs(names, exprs, baseEnv, argEvalEnv) {
   */
   let newEnv = new Environment(baseEnv);
   let evalledArgList = [];
-  for (let i = 0; i < exprs.length; i++) {
-    let e = exprs[i];
+  for (let i = 0, l = exprs.length; i < l; ++i) {
+    let e = exprs[i], value;
     if (typeof e == "object" && e[1] == ":") { // named arg of the form (argName : argVal)
-      let value = liskEval(e[2], argEvalEnv);
+      value = liskEval(e[2], argEvalEnv);
       newEnv.add(e[0], value);
-      evalledArgList.push(value);
     } else { // unnamed argument
-      let value = liskEval(e, argEvalEnv);
+      value = liskEval(e, argEvalEnv);
       newEnv.add(names[i], value);
-      evalledArgList.push(value);
       /* the ith argument value passed is assigned to the ith argument of the function
-         regardless of whether the function call also involves named functions.*/
+         regardless of whether the function call also involves named functions.*/ // you mean, named arguments?
     }
+    evalledArgList.push(value);
   }
   newEnv.add("_arguments", evalledArgList);
-  for (let i = 0; i < names.length; i++) {
-    if (newEnv.check(names[i]) === false) {
+  for (const name of names) {
+    if (newEnv.check(name) === false) {
       // ^ if a function is called without an argument name being supplied, set the arg's value to #u (undefined)
-      newEnv.add(names[i], "#u");
+      newEnv.add(name, "#u");
     }
   }
   return newEnv;
 }
 
 function isSelfEvaluating(expr) {
-  if (expr[0] == "\"" && expr[expr.length-1] == "\"") return true;
+  return (expr[0] == '"' && expr[expr.length - 1] == '"') || typeof expr == 'number'
   //^ if expression starts and ends with a quote, it's a string
-  if (typeof expr == "number") return true;
-  if (expr == "#t" || expr == "#f" || expr == "#u") return true;
+    || expr == '#t' || expr == '#f' || expr == '#u';
   //^ special values (true, false, undefined)
-  return false;
 }
 
 function isTrue(expr) {
-  if (expr === "#f" || expr === "#u" || expr === 0) return false;
-  return true;
+  return expr !== '#f' && expr !== '#u' && expr !== 0;
 }
 
 function boolConvert(boo) {
   if (boo === true) return "#t";
   if (boo === false) return "#f";
   createErrorObj("Javascript error: boolConvert cannot convert non-boolean value to a boolean", "Value: " + output2String(boo));
+  return '#u'; // gotta do something, right?
 }
-
+/*
 function listOfValues(exprList, env) {
   // do not confuse with liskListEval
+  return exprList.map(expr => liskEval(expr, env));
   let r = [];
   for (let i = 0; i < exprList.length; i++) {
     r.push(liskEval(exprList[i], env));
   }
   return r;
 }
-
-function liskListEval(exprList, env) {
+*/
+function liskListEval(exprList, env, i = 0) {
   // do not confuse with listOfValues
-  for (let i = 0; i < exprList.length - 1; i++) {
+  const l = exprList.length - 1;
+  for (; i < l; ++i) {
     liskEval(exprList[i], env);
   }
-  return liskEval(exprList[exprList.length-1], env);
+  return liskEval(exprList[l], env);
 }
 /*
 function isPrimitiveProcedure(procName) {
@@ -395,44 +389,128 @@ function arrayEq(ra, rb, nonExactEqualityTesting) {
   */
 }
 
-function getPrimitiveProcedure(procName, env) {
-  function argsToArray(aarghs, checkFunc) {
-    /* the arguments variable available inside a Javascript function is an object
-       containing fields 0, 1, ..., n set to the values of the 0th, 1st, ... nth
-       argument, rather than being an array (WHY?!). Hence this function is needed
-       to implement some functions below in a maximally simple manner.
-    */
-    let r = [];
-    let i = 0;
-    while (aarghs.hasOwnProperty(i)) {
-      r.push(aarghs[i]);
-      if (checkFunc !== undefined) {
-        if (checkFunc(aarghs[i])) {
-          createErrorObj("Invalid argument type.", "Primitive procedure '" + procName + "' cannot take the argument: " + aarghs[i]);
-        }
+function argsToArray(aarghs, checkFunc) { // un-nest inner functions
+  /* the arguments variable available inside a Javascript function is an object
+     containing fields 0, 1, ..., n set to the values of the 0th, 1st, ... nth
+     argument, rather than being an array (WHY?!). Hence this function is needed
+     to implement some functions below in a maximally simple manner.
+  */
+  // I understand your frustration, but watch:
+  const arr = Array.from(aarghs);
+  if(checkFunc) // since in the original code below, invalid arg type does not throw a javascript error and the while loop resumes,
+    arr.forEach(checkFunc); // it should be ok to convert to array and then check for invalid arg type.
+  return arr;
+}
+  /*
+  let r = [];
+  let i = 0;
+  while (aarghs.hasOwnProperty(i)) {
+    r.push(aarghs[i]);
+    if (checkFunc !== undefined) { // checkFunc doesn't change, why check it every time?
+      if (checkFunc(aarghs[i])) {
+        createErrorObj("Invalid argument type.", "Primitive procedure '" + procName + "' cannot take the argument: " + aarghs[i]);
       }
-      ++i;
     }
-    return r;
+    ++i;
   }
-  function disqualifyingCompare(disqualifier, args) {
-    let r = argsToArray(args);
-    for (let i = 1; i < r.length; i++) {
-      if (disqualifier(r[0], r[i])) return "#f";
-    }
-    return "#t";
+  return r;
+  */
+/* // no longer needed
+function disqualifyingCompare(disqualifier, args) {
+  // let r = argsToArray(args); // why is this necessary?
+  for (let i = args.length; --i;) { // arguments still have the same .length property. Unroll for speed.
+    if (disqualifier(args[0], args[i])) return "#f";
   }
+  return "#t";
+}
+*/
+function strokeProps(stroke, t) {
+  if (stroke != undefined) stroke = unstringify(stroke);
+  if (stroke == "dash" || stroke == "dashed")
+    return [[3 * t, 3 * t].join(","), "butt"];
+  if (stroke == "dot" || stroke == "dotted")
+    return [[0, 2 * t].join(","), "round"];
+  if (stroke == "dash dot" || stroke == "dot dash")
+    return [[t, 3*t, 3*t, 3*t].join(","), "butt"];
+  return ["", "butt"];
+}
+function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a better way?
+  const drawObj = {
+    command: 'draw',
+    type: unstringify(type), // if this errors, something is seriously wrong.
+  };
+  let strokeProp = ['', 'butt'];
+  switch(drawObj.type) {
+    case 'lseg':
+      drawObj.type = 'line';
+      drawObj.x1 = a1;
+      drawObj.y1 = a2;
+      drawObj.x2 = a3;
+      drawObj.y2 = a4;
+      drawObj.color = a5 ? unstringify(a5) : '#000000';
+      drawObj.thickness = a6 == undefined ? 1 : a6;
+      strokeProp = strokeProps(a7, drawObj.thickness);
+      break;
+    case 'circle':
+      drawObj.x = a1;
+      drawObj.y = a2;
+      drawObj.r = a3;
+      drawObj.fill = a4 ? unstringify(a4) : 'none';
+      drawObj.outlineThickness = a5 == undefined ? 1 : a5;
+      drawObj.outlineColor = a6 ? unstringify(a6) : '#000000';
+      strokeProp = strokeProps(a7, drawObj.outlineThickness);
+      break;
+    case 'ellipse':
+      drawObj.x = a1;
+      drawObj.y = a2;
+      drawObj.rx = a3;
+      drawObj.ry = a4;
+      drawObj.angle = a5;
+      drawObj.fill = a6 ? unstringify(a6) : 'none';
+      drawObj.outlineThickness = a7 == undefined ? 1 : a7;
+      drawObj.outlineColor = a8 ? unstringify(a8) : '#000000';
+      strokeProp = strokeProps(a9, drawObj.outlineThickness);
+      break;
+    case 'polygon':
+      drawObj.vertices = a1;
+      drawObj.fill = a2 ? unstringify(a2) : 'none';
+      drawObj.outlineThickness = a3 == undefined ? 1 : a3;
+      drawObj.outlineColor = a4 ? unstringify(a4) : '#000000';
+      strokeProp = strokeProps(a5, drawObj.outlineThickness);
+      break;
+    case 'path':
+      drawObj.svgPathString = unstringify(a1);
+      drawObj.fill = a2 ? unstringify(a2) : 'none';
+      drawObj.outlineThickness = a3 == undefined ? 1 : a3;
+      drawObj.outlineColor = a4 ? unstringify(a4) : '#000000';
+      strokeProp = strokeProps(a5, drawObj.outlineThickness);
+      break;
+    default:
+      createErrorObj("Unknown draw type: " + type, "Draw arguments: " + [a1, a2, a3, a4, a5, a6, a7, a8, a9].join(", "));
+  }
+  drawObj.dasharray = strokeProp[0];
+  drawObj.linecap = strokeProp[1];
+  liskOutput.push(drawObj);
+  return "#u";
+}
+
+function getPrimitiveProcedure(procName, env) {
   switch (procName) {
     // EQUALITY
-    case "=":
+    case "=": return (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first, true)));
+    /*
       return function() {
         return disqualifyingCompare((base, comp) => !arrayEq(base, comp, true), arguments);
-      }
-    case "==":
+      }*/
+    case "==": return (first, ...rest) => boolConvert(rest.every(x => x >= first && first >= x));
+    // Note: this optimization assumes first and ...rest do not contain functions.
+    // Using the old == code below, (def (f x) x) (== f f) returns "#t" but (== + +) returns "#f", which is already problematic.
+    // Using the new code, all objects (including functions but not arrays) are equal to each other. (== f +) returns "#t".
+    // Hopefully you won't ever need to compare two functions?
+    /*
       return function() {
         return disqualifyingCompare((base, comp) => !arrayEq(base, comp, false), arguments);
-      }
-
+      }*/
     // FUNCTION FUNCTIONS
     case "function?": return function(func) {
       return boolConvert(isProcedure(func));
@@ -440,16 +518,15 @@ function getPrimitiveProcedure(procName, env) {
 
     // LOGIC FUNCTIONS
     case "not": return function(a) {
-      if (isTrue(a)) return "#f";
-      return "#t";
+      return isTrue(a) ? "#f" : "#t";
     };
     case "and":
       return function() {
-        return boolConvert(argsToArray(arguments).filter(x => !isTrue(x)).length == 0);
+        return boolConvert(argsToArray(arguments).every(isTrue));
       }
     case "or":
       return function() {
-        return boolConvert(argsToArray(arguments).filter(x => isTrue(x)).length != 0);
+        return boolConvert(argsToArray(arguments).some(isTrue));
       }
 
     // MATH FUNCTIONS
@@ -460,21 +537,22 @@ function getPrimitiveProcedure(procName, env) {
         return '"' + n.toString(b) + '"';
       }
     case "num-of":
-      return function(n, b) {
-        b = b == undefined? 10 : b;
+      return function(n, b = 10) {
         return parseInt(unstringify(n), b);
       }
     case "round": return Math.round;
     case "floor": return Math.floor;
     case "ceil": return Math.ceil;
-    case ">":
+    case ">": return (first, ...rest) => boolConvert(rest.every(x => first - x > floatingPrecision));
+    /*
       return function() {
         return disqualifyingCompare((base, comp) => !(base - comp > floatingPrecision), arguments);
-      }
-    case "<":
+      }*/
+    case "<": return (first, ...rest) => boolConvert(rest.every(x => x - first > floatingPrecision));
+    /*
       return function() {
         return disqualifyingCompare((base, comp) => !(comp - base > floatingPrecision), arguments);
-      }
+      }*/
     case "+":
       return function() {
         return argsToArray(arguments, isNaN).reduce((acc, val) => acc + val);
@@ -503,8 +581,8 @@ function getPrimitiveProcedure(procName, env) {
     case "sqrt": return Math.sqrt;
     case "ln": case "log": return Math.log;
     case "random": return Math.random;
-    case "min": return function() { return Math.min(...arguments); };
-    case "max": return function() { return Math.max(...arguments); };
+    case "min": return Math.min;
+    case "max": return Math.max;
 
     // LIST MANIPULATION FUNCTIONS
     // (note: underlying representation for flat list is that of an array, not nested cons structure like in Lisp)
@@ -524,10 +602,12 @@ function getPrimitiveProcedure(procName, env) {
     case "cdr": case "rest": return r => r.slice(1);
     // ^ car and cdr for the Lisp fans ...
     // ... but also the more sensible "first" and "rest" names are available
-    case "concat":
+    case "concat": return (...args) => [].concat(...args);
+    /*
       return function() {
         return argsToArray(arguments).reduce((acc, val) => acc.concat(val));
       }
+      */
     case "slice":
       return function(l, s, e) {
         return l.slice(s, e);
@@ -543,7 +623,7 @@ function getPrimitiveProcedure(procName, env) {
     case "string?": return str => boolConvert(typeof str === "string");
     case "str-concat":
       return function() {
-        return '"' + argsToArray(arguments/*, s => typeof s === "string"*/).map(unstringify).reduce((acc, val) => acc + val) + '"';
+        return '"'.concat(...argsToArray(arguments/*, s => typeof s === "string"*/).map(unstringify), '"');
       }
     case "str-of":
       return function(obj) {
@@ -602,103 +682,17 @@ function getPrimitiveProcedure(procName, env) {
 
     // DRAW FUNCTIONS
     case "draw": // the primitive drawing function in Lisk
-      return function(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
-        function strokeProps(stroke, t) {
-          if (stroke != undefined) stroke = unstringify(stroke);
-          if (stroke == "dash" || stroke == "dashed") {
-            return [[3 * t, 3 * t].join(","), "butt"];
-          } else if (stroke == "dot" || stroke == "dotted") {
-            return [[0, 2 * t].join(","), "round"];
-          } else if (stroke == "dash dot" || stroke == "dot dash") {
-            return [[t, 3*t, 3*t, 3*t].join(","), "butt"];
-          } else {
-            return ["", "butt"];
-          }
-        }
-        let dasharray = "", linecap = "butt";
-        if (type == "\"lseg\"") {
-          let thickness = a6 == undefined ? 1 : a6;
-          liskOutput.push( {
-            command : "draw",
-            type : "line",
-            x1 : a1,
-            y1 : a2,
-            x2 : a3,
-            y2 : a4,
-            color : a5 == undefined ? "#000000" : unstringify(a5),
-            thickness : thickness,
-            dasharray : strokeProps(a7, thickness)[0],
-            linecap : strokeProps(a7, thickness)[1]
-          });
-        } else if (type == "\"circle\"") {
-          let thickness = a5 == undefined ? 1 : a5;
-          liskOutput.push( {
-            command : "draw",
-            type : "circle",
-            x : a1,
-            y : a2,
-            r : a3,
-            fill : a4 == undefined ? "none" : unstringify(a4),
-            outlineThickness : thickness,
-            outlineColor : a6 == undefined ? "#000000" : unstringify(a6),
-            dasharray : strokeProps(a7, thickness)[0],
-            linecap : strokeProps(a7, thickness)[1]
-          });
-        } else if (type == "\"ellipse\"") {
-          let thickness = a7 == undefined ? 1 : a7;
-          liskOutput.push( {
-            command: "draw",
-            type : "ellipse",
-            x : a1,
-            y : a2,
-            rx : a3,
-            ry : a4,
-            angle : a5,
-            fill : a6 == undefined ? "none" : unstringify(a6),
-            outlineThickness : thickness,
-            outlineColor : a8 == undefined ? "#000000" : unstringify(a8),
-            dasharray : strokeProps(a9, thickness)[0],
-            linecap : strokeProps(a9, thickness)[1]
-          })
-        } else if (type == "\"polygon\"") {
-          let thickness = a3 == undefined ? 1 : a3;
-          liskOutput.push( {
-            command : "draw",
-            type : "polygon",
-            vertices : a1,
-            fill : a2 == undefined ? "none" : unstringify(a2),
-            outlineThickness : thickness,
-            outlineColor: a4 == undefined ? "#000000" : unstringify(a4),
-            dasharray : strokeProps(a5, thickness)[0],
-            linecap : strokeProps(a5, thickness)[1]
-          });
-        } else if (type == "\"path\"") {
-          let thickness = a3 == undefined ? 1 : a3;
-          liskOutput.push( {
-            command : "draw",
-            type : "path",
-            svgPathString : unstringify(a1),
-            fill : a2 == undefined ? "none" : unstringify(a2),
-            outlineThickness : thickness,
-            outlineColor : a4 == undefined ? "#000000" : unstringify(a4),
-            dasharray : strokeProps(a5, thickness)[0],
-            linecap : strokeProps(a5, thickness)[1]
-          });
-        } else {
-          createErrorObj("Unknown draw type: " + type, "Draw arguments: " + [a1, a2, a3, a4, a5, a6, a7].join(", "));
-        }
-        return "#u";
-      }
+      return _lisk_draw;
     case "draw-text":
-      return function(content, x, y, style, fontSize, color, fontFamily) {
+      return function(content, x, y, style, fontSize = 20, color = '"#000000"', fontFamily = '"Baskerville"') {
         let styling = "", weight = "", decoration = "";
-        let styles;
-        if (style != undefined) {
-          styles = unstringify(style).split(" ");
-          if (styles.indexOf("italic") != -1) styling = "italic";
-          if (styles.indexOf("bold") != -1) weight = "bold";
-          if (styles.indexOf("underline") != -1) decoration = "underline";
-          if (styles.indexOf("strikethrough") != -1) decoration = "line-through";
+        // let styles;
+        if (style) {
+          //styles = unstringify(style); // indexOf is for when you need the index; otherwise, use str.include(),
+          if (style.includes("italic")) styling = "italic";
+          if (style.includes("bold")) weight = "bold";
+          if (style.includes("underline")) decoration = "underline";
+          if (style.includes("strikethrough")) decoration = "line-through"; // could it have both?
         }
         liskOutput.push( {
           command: "draw",
@@ -707,9 +701,9 @@ function getPrimitiveProcedure(procName, env) {
           x : x,
           y : y,
           style : styling, weight : weight, decoration: decoration,
-          color : color == undefined ?  "#000000" : unstringify(color),
-          fontSize : fontSize == undefined ? 20 : fontSize,
-          fontFamily: fontFamily == undefined ? "Baskerville" : unstringify(fontFamily)
+          color : unstringify(color),
+          fontSize : fontSize,
+          fontFamily: unstringify(fontFamily)
         })
         return "#u";
       }
@@ -733,7 +727,7 @@ function getPrimitiveProcedure(procName, env) {
 function unstringify(str) { // converts strings like ""stuff"" into "stuff"
   /* This is needed because in Javascript-array representation, everything (e.g. variables)
   is represented as a string (-> in quotes), while strings are in double quotes like ""this"".*/
-  return str.slice(1, str.length - 1);
+  return str.slice(1, -1);
 }
 
 
@@ -752,20 +746,20 @@ function resetGlobalEnv() {
     ["#F", "#f"],
     ["canvas-height", drawHeight], // drawHeight and -width defined in index.html
     ["canvas-width", drawWidth]
-  ].forEach(x => le("(let " + x[0] + " " + x[1] + ")"))
+  ].forEach(x => globalEnv.add(x[0], x[1])) // Can't you use the internal functions for this instead of evoking the evaluator?
   liskOutput = [];
   macros = {};
 }
 
 // PARSING CODE
 
-const stringToken = /"(\\?[^\\"]|\\\\|\\")*"/g,
-  token = /('?\(|\)|"(\\?[^\\"]|\\\\|\\")*"|:|[^()\s":]+)/g;
+const stringToken = /"(\\?[^\\"]|\\[\\"])*"/g,
+  token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g;
 const validate = str => {
   str = str.replace(stringToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
-  for(let i = 0, l = str.length; i < l; i++) {
+  for(let i = 0, l = str.length; i < l; ++i) {
     switch(str[i]) {
       case '\n':
         ++line;
@@ -777,69 +771,66 @@ const validate = str => {
         break;
       case ')':
         if(--openClose < 0) {
-          createErrorObj('Syntax Error:', `Unmatched <span style="color:#fff">)</span> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          createErrorObj('Syntax Error:', `Unmatched <mark>)</mark> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
           return false;
         }
         openPos.pop();
         break;
       case '\'':
         if(str[i + 1] === undefined || /[\s')]/.test(str[i + 1])) {
-          createErrorObj('Syntax Error:', `<span style="color:#fff">'</span> requires a valid operand on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          createErrorObj('Syntax Error:', `<mark>'</mark> requires a valid operand on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
           return false;
         }
         break;
       case '"':
-        createErrorObj('Syntax Error:', `Unmatched <span style="color:#fff">"</span> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+        createErrorObj('Syntax Error:', `Unmatched <mark>"</mark> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
         return false;
     }
     ++column;
   }
   if(openClose) {
     [line, column] = openPos[openClose - 1];
-    createErrorObj('Syntax Error:', `${openClose} unmatched <span style="color:#fff">(</span>, last one on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+    createErrorObj('Syntax Error:', `${openClose} unmatched <mark>(</mark>, last one on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
     return false;
   }
   return true;
 };
 
-function parseCode(str) {
-  const matches = str.match(token), program = [], path = [];
-  if(matches == null) return program;
-  let quoteDepth = 0, temp = program;
-  for(let i = 0, l = matches.length; i < l; ++i) {
-    let match = matches[i];
+function JIT(str, env = globalEnv) { // Just-in-time interpreter: calls liskEval as each expression is parsed
+  if(!validate(str)) // This way program only have 1 expression at a time, and no need to pass back to another function.
+    return false;
+  const matches = str.match(token);
+  if(!matches) return false; // as according to liskEval('', env)
+  let temp = [], result;
+  for(let match of matches) {
     if(match == '\'(') {
-      temp.push(["quote", []]);
-      path.push(temp.length - 1, 1);
-      temp = temp[temp.length - 1][1];
-      ++quoteDepth;
-    } else if(match[0] == '\'') {
-      //if(match == '\'!') // moved to key == '!'
-        //match = ' lambda';
+      const parent = temp;
+      temp = [];
+      temp.parent = parent;
+      parent.push(["quote", temp]); // takes advantage that (quote ()) doesn't care about any arguments after the first
+    } else if(match[0] == '\'')
       temp.push(["quote", match.slice(1)]);
-    } else if(match == '(') {
-      temp.push([]);
-      path.push(temp.length - 1);
-      temp = temp[temp.length - 1];
-      if(quoteDepth)
-        ++quoteDepth;
-    } else if(match == ')') {
-      path.pop();
-      if(quoteDepth)
-        if(!--quoteDepth)
-          path.pop();
-      temp = program;
-      for(let i = 0, l = path.length; i < l; ++i)
-        temp = temp[path[i]];
-    } else {
+    else if(match == '(') {
+      const parent = temp;
+      temp = [];
+      temp.parent = parent;
+      parent.push(temp);
+    } else if(match == ')')
+      temp = temp.parent;
+    else {
       if(!isNaN(+match))
         match = +match;
-      //else if(match == '!')
-        //match = 'lambda';
       temp.push(match);
     }
+    if(!temp.parent)
+      try {
+        result = liskEval(temp.pop(), env);
+      } catch(err) {
+        createErrorObj("Javascript error (additional information may have been logged to browser console)", err);
+        throw err; // To fix the error, you must first accept the error.
+      }
   }
-  return program;
+  return result;
 }
 
 function createErrorObj(text, message) {
@@ -853,29 +844,29 @@ function createWarnObj(text) {
           text: text});
 }
 
-function output2String(o) {
-  function arrayToString(arr) {
-    let str = "[ ";
-    for (let i = 0; i < arr.length; i++) {
-      if (Array.isArray(arr[i])) {
-        str += arrayToString(arr[i]);
-      } else str += arr[i] + " ";
-    }
-    return str + "] ";
+function arrayToString(arr) { // un-nest functions whenever possible. JavaScript doesn't remember local functions.
+  let str = "[ "; // you don't want the interpreter interpreting the same function more than once.
+  for (let i = 0, l = arr.length; i < l; ++i) {
+    if (Array.isArray(arr[i]))
+      str += arrayToString(arr[i]);
+    else str += arr[i] + " ";
   }
+  return str + "] ";
+}
+
+function output2String(o) {
   if (Array.isArray(o)) o = arrayToString(o);
   return o;
 }
 
 
-// EVALUATOR FUNCTION:
+/* EVALUATOR FUNCTION:
 
 function le(code, env) {
   if (env == undefined) env = globalEnv;
   if(!validate(code))
     return;
   let parsed = parseCode(code);
-  //console.log("Parsed code: ");
   //console.log(parsed);
   for (let i = 0; i < parsed.length; i++) {
     try {
@@ -893,3 +884,4 @@ function le(code, env) {
     }
   }
 }
+*/

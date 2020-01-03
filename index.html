@@ -63,7 +63,7 @@ button:active {
   padding: 20px;
   height: 33%;
   flex-grow: 1;
-  overflow: scroll;
+  overflow-y: auto;
   line-height: 1.0em;
   font-size: 10px;
 }
@@ -193,21 +193,8 @@ let userCode = "";
 let showingLibrary = false;
 let editorOnLeft = true;
 
-function extractFromEditor() {
-  /*let c = editor.innerHTML;
-  for (let i = 0; i < c.length; i++) {
-    if (c[i] == "\"") {
-      c = c.slice(0, i) + "\\" + c.slice(i);
-      ++i;
-    }
-  }
-  return c;*/
-  return editor.getValue();
-}
-
 let verbose = false;
 
-let M = Math;
 let drawWidth = drawing.clientWidth;
 let drawHeight = drawing.clientHeight;
 let draw = SVG("drawing").size(drawWidth, drawHeight);
@@ -226,35 +213,6 @@ console_input.style.color = consoleInputColor;
 
 function deleteDrawItems() {
   for (let i = 0; i < drawItems.length; i++) drawItems[i].remove();
-}
-
-function removeExtraWspace(str) {
-  // removes unnecessary whitespace from the .textContent of the editor window
-  for (let i = 0; i < 2; i++) {
-    while (str[0] == "\n" || str[0] == " ") str = str.slice(1);
-    str = str.split("").reverse().join("");
-    // running this twice removes trailing spaces / newlines at the beginning or end
-  }
-  for (let j = 0; j < str.length; j++) {
-    if ((!(/\S/.test(str[j])) || str[j].charCodeAt(0) == 8629) === true && str[j] !== " ") {
-      // ^ convert all whitespace that isn't a space into a space
-      // (the weird 8629 charcode is what CodeMirror uses for line breaks)
-      str = str.slice(0, j) + str.slice(j + 1)
-    }
-  }
-  let i = 0;
-  while (i < str.length) {
-    if (i > 0 && str[i] == " " && str[i - 1] == " ") {
-      str = str.slice(0, i) + str.slice(i + 1);
-    } else ++i;
-  }
-  return str;
-}
-
-function getProcessedCode(code) {
-  if (code == undefined) code = editor.getValue(); //editor.textContent;
-  // return removeExtraWspace(code);
-  return code;
 }
 
 function drawFromCommand(cmd) {
@@ -292,7 +250,7 @@ function drawFromCommand(cmd) {
       /* ^ seems like SVG.js creates another one of these when the normal
            svg element is cast into an SVG.js element on the next line;
            this renders fine but causes an error when trying to export the SVG.
-           Hence the removal of the unneccessary property.
+           Hence the removal of the unnecessary property.
       */
       let SVGel = SVG(svgtex).move(cmd.x, cmd.y)
       SVGel.addTo(draw);
@@ -300,7 +258,7 @@ function drawFromCommand(cmd) {
       drawItems.push(SVGel);
       break;
     default:
-      console.log("Unknown object type encountered when drawing: " + type);
+      console.log("Unknown object type encountered when drawing: " + cmd.type);
       break;
   }
 }
@@ -379,7 +337,7 @@ function tikzFromCommand(cmd) {
       return "\\node [anchor=north west" + ", font=" + tikzFontSize(cmd.fontSize * tikzScaleFactor)
         + "] at (" + n(cmd.x) + "," + n(-cmd.y) + ") {$" + cmd.content + "$};";
     default:
-      console.log("Unknown object type encountered when converting to TikZ: " + type);
+      console.log("Unknown object type encountered when converting to TikZ: " + cmd.type);
       break;
   }
 }
@@ -391,7 +349,6 @@ function toTikz() {
     + (liskOutput.filter(x => x.command == "draw")).map(tikzFromCommand).join("\n")
     + "\n \\end{tikzpicture}";
 }
-
 
 // Image saving functions (thanks StackOverflow):
 function saveSvg() {
@@ -448,7 +405,6 @@ function savePng() {
   img.src = url;
 }
 
-
 let showingExportOptions = false;
 export_btn.onclick = function () {
   showingExportOptions = !showingExportOptions;
@@ -479,8 +435,6 @@ tikz_scale_factor_input.oninput = function() {
 png_scale_factor_input.oninput = function() {
   pngScaleFactor = parseFloat(png_scale_factor_input.value);
 };
-
-
 
 function output2String(o) {
   function arrayToString(arr) {
@@ -568,7 +522,7 @@ console_input.onkeypress = function(event) {
     } else {
       liskOutput = [];
       // macros = {};
-      let finalReturnVal = le(txt);
+      let finalReturnVal = JIT(txt);
       handleOutput(liskOutput);
       writeToConsole("< " + output2String(finalReturnVal), consoleReturnColor);
     }
@@ -618,12 +572,10 @@ switch_btn.onclick = function() {
     switch_btn.innerText = "<";
   }
 };
-/*
 editor.on("cursorActivity", function() {
   editor.matchBrackets();
   // ^ there should be no need for this because CodeMirror should call this automatically ...
-})
-*/
+}); // apparently not; spent 1 hour looking for this which I commented out by mistake
 render_btn.onclick = function() {
   deleteDrawItems();
   // drawItems = drawFromCommandList(drawCommands(getProcessedCode()));
@@ -634,13 +586,13 @@ render_btn.onclick = function() {
   let timeText = "Running time";
   console.time(timeText);
   if (showingLibrary) {
-    le(getProcessedCode(editor.getValue())); // runs the default library (because the library is showing)
+    JIT(editor.getValue()); // runs the default library (because the library is showing)
     liskOutput = [];
-    le(getProcessedCode(userCode)); // runs user code
+    JIT(userCode); // runs user code
   } else {
-    le(getProcessedCode(libraryCode)); // runs the default library
+    JIT(libraryCode); // runs the default library
     liskOutput = [];
-    le(getProcessedCode(editor.getValue())); // runs user code
+    JIT(editor.getValue()); // runs user code
   }
   /* ^ cases separated because otherwise pressing render when Schematica library open
      would run the library code twice (generating a bunch of obnoxious warnings)*/

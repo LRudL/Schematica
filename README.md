@@ -37,13 +37,29 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 
 ## Version history
 
+### v0.3.2
+2020-01-02
+
+- Lisk
+  - Optimized parser.
+  - Refactored and optimized evaluator.
+
+- Libraries
+  - Removed JQuery.
+
+- Interface
+  - Interactive console now only has vertical scroll bar when needed.
+
+- Fixes
+  - Bracket matching is restored.
+
 ### v0.3.1
 2019-12-30
 
 - Lisk
   - Optimized parser.
   - Syntax errors now give line and column number of the error.
-  - Quotes now support escaped quotes (" \" " no longer errors).
+  - Quotes now support escaped quotes (" \\" " no longer errors).
 
 ### v0.3.0
 
