@@ -34,8 +34,41 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 - Better exception-handling in Lisk
 - Arcs, curves, etc.
 - Support for rotation
+- Grids
+
+### Known issues
+- If an ellipse is rotated, the TikZ export of the diagram will not feature a rotated ellipse (TikZ export in general is not guaranteed to work).
+- Creating a line with its angle set to 0 results in an error being logged to the Lisk console (though the line does render properly).
+- A circle's point-at-angle function returns the point at the negative of the given angle (also other angle inversions, e.g. relating to circle tangents).
 
 ## Version history
+
+### v0.4.0
+
+2020-01-14
+
+- Lisk
+  - New primitive function for rendering SVG paths.
+  - Print functions now return the value of what they printed, instead of #u (the undefined value).
+  - New primitive str-of function for converting things to strings.
+- SDL
+  - Added the q-bezier and c-bezier functions for drawing quadratic and cubic Bezier curves respectively.
+  - Added the curve function for drawing cubic Beziers, based on start/end angles and radii (rather than control points like the c-bezier function).
+  - Added the arc-from-flags and arc functions, for drawing arcs based on SVG-style flag arguments, or from mid point, radius and angles, respectively.
+  - Added the arrow function for drawing arrows, as well as the c-arrow and arc-arrow for drawing cubic Bezier and arc arrows respectively.
+  - Added the coord+vect function for translating a point by a distance represented by a vector.
+  - Added the color-from-scale function.
+  - Added the composite function.
+  - New ++! and --! macros for incrementing (with modification) a variable.
+  - Vector function can now take a list of the form [x y z] as an argument, in addition to the usual way of specifying two or three arguments for x, y, (and optionally z).
+- Documentation updated to explain new features.
+- Fixes
+  - Lisk
+    - Fixed bug where strings starting with a space were not handled properly.
+  - SDL
+    - Fixed the y-at-x function for lines.
+    - Fixed line segment stroke style property not being applied to the rendered line segment.
+    - Fixed some vector functions returning lists of values rather than vectors.
 
 ### v0.3.0
 

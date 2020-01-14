@@ -382,6 +382,8 @@ function arrayEq(ra, rb, nonExactEqualityTesting) {
 }
 
 function getPrimitiveProcedure(procName, env) {
+  function rad(deg) {return deg * Math.PI / 180;}
+  function deg(rad) {return rad / Math.PI * 180;}
   function argsToArray(aarghs, checkFunc) {
     /* the arguments variable available inside a Javascript function is an object
        containing fields 0, 1, ..., n set to the values of the 0th, 1st, ... nth
@@ -479,12 +481,12 @@ function getPrimitiveProcedure(procName, env) {
         return argsToArray(arguments, x => isNaN(x)).reduce((acc, val) => acc / val);
       }
     case "mod": return (a, b) => a % b;
-    case "sin": return x => Math.sin(x);
-    case "cos": return x => Math.cos(x);
-    case "tan": return x => Math.tan(x);
-    case "asin": return x => Math.asin(x);
-    case "acos": return x => Math.acos(x);
-    case "atan": return x => Math.atan(x);
+    case "sin": return x => Math.sin(rad(x));
+    case "cos": return x => Math.cos(rad(x));
+    case "tan": return x => Math.tan(rad(x));
+    case "asin": return x => deg(Math.asin(x));
+    case "acos": return x => deg(Math.acos(x));
+    case "atan": return x => deg(Math.atan(x));
     case "exp": return x => Math.exp(x);
     case "pow": return (x, y) => Math.pow(x, y);
     case "sqrt": return x => Math.sqrt(x);
