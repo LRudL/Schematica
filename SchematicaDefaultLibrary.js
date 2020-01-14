@@ -125,6 +125,11 @@ let libraryCode = `(// Schematica Default Library (SDL)
         (filterer (rest l) op res))))
   (filterer l op '()))
 
+(def (composite fn-list)
+  (if (= (length fn-list) 1)
+    (car fn-list)
+    (! x ((car fn-list) ((composite (cdr fn-list)) x)))))
+
 (def (list-merge a b op)
   (def (merger a b op res)
     (if (= (length a) 0)
@@ -345,6 +350,31 @@ let libraryCode = `(// Schematica Default Library (SDL)
                       "," (x-of end) (y-of end))
         fill (stroke 'width) (stroke 'color) (stroke 'style)))
 
+
+(def (arc-from-flags start end r size-flag sweep-flag fill stroke)
+  (rep start (rand-point))
+  (rep end (rand-point))
+  (rep r (* (random) canvas-scale))
+  (rep fill "none") (rep stroke (stroke-style))
+  (rep sweep-flag #f) (rep size-flag #f)
+  (let svg-sweep-flag (if sweep-flag 1 0))
+  (let svg-size-flag (if size-flag 1 0))
+  (draw "path"
+        (join-strings " "
+                      "M" (x-of start) (y-of start)
+                      "A" r r 0 svg-size-flag svg-sweep-flag
+                      (x-of end) (y-of end))
+        fill (stroke 'width) (stroke 'color) (stroke 'style)))
+
+(def (arc mid r a1 a2 fill stroke)
+  (rep mid (rand-point)) (rep r (* (random) canvas-scale))
+  (rep a1 (* (random) 360)) (rep a2 (* (random) 360))
+  (arc-from-flags
+   (coord+vect mid ((vector r 0) 'rotated (rad (ng a1))))
+   (coord+vect mid ((vector r 0) 'rotated (rad (ng a2))))
+   r (< 180 (- a2 a1)) #f
+   fill stroke))
+
 (def (arrow start end stroke angle size)
   (rep angle (/ pi 4))
   (rep size (/ (distance start end) 6))
@@ -365,6 +395,22 @@ let libraryCode = `(// Schematica Default Library (SDL)
   (let scaled-vect ((vector 1 0) '* size))
   (let rvect (scaled-vect 'rotated (+ (ng ea) angle)))
   (let lvect (scaled-vect 'rotated (- (ng ea) angle)))
+  (lseg end (coord+vect end rvect) stroke)
+  (lseg end (coord+vect end lvect) stroke))
+
+(def (arc-arrow mid r a1 a2 angle size stroke)
+  (rep mid (rand-point)) (rep r (* (random) (/ canvas-scale 4)))
+  (rep a1 (* (random) 360)) (rep a2 (* (random) 360))
+  (rep angle (/ pi 4)) (rep size 10)
+  (rep stroke (stroke-style))
+  (let o (circle (x-of mid) (y-of mid) r (draw?: #f)))
+  (let t (o 'tangent (rad a2)))
+  (let ea (t 'angle))
+  (let scaled-vect (vector size 0))
+  (let rvect (scaled-vect 'rotated (+ (ng ea) pi angle)))
+  (let lvect (scaled-vect 'rotated (- (ng ea) pi angle)))
+  (let end (coord+vect mid (mag/dir->vect r (rad (ng a2)))))
+  (arc mid r a1 a2 "none" stroke)
   (lseg end (coord+vect end rvect) stroke)
   (lseg end (coord+vect end lvect) stroke))
 

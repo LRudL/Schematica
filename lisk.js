@@ -453,6 +453,7 @@ function getPrimitiveProcedure(procName, env) {
     case "round": return n => Math.round(n);
     case "floor": return n => Math.floor(n);
     case "ceil": return n => Math.ceil(n);
+    case "abs": return n => Math.abs(n);
     case ">":
       return function() {
         return disqualifyingCompare((base, comp) => !(base - comp > floatingPrecision), arguments);
