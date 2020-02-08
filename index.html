@@ -58,14 +58,17 @@ button:active {
   height: 66%;
 }
 #editor2 {
+  font-family: monospace;
   background-color: #000720;
   color: white;
-  padding: 20px;
+  padding: 16px;
   height: 33%;
   flex-grow: 1;
   overflow-y: auto;
-  line-height: 1.0em;
-  font-size: 10px;
+  font-size: 16px;
+}
+#editor2 p {
+  margin: 0;
 }
 #etoolbar {
   display: flex;
@@ -82,9 +85,12 @@ button:active {
 }
 #console_input {
   width: 100%;
+  box-sizing: border-box;
   font-family: monospace;
   background-color: black;
   border: 1px solid white;
+  margin-top: 2px;
+  font-size: 16px;
 }
 .dialog_box {
   color: white;
@@ -126,7 +132,7 @@ button:active {
           <p> Print-outs, errors, and warnings will appear here.</p>
           <p> Type 'help' for help. </p>
         </div>
-        <input type="text" id="console_input"></input>
+        <input type="text" id="console_input" placeholder="help"></input>
       </div>
     </div>
   </div>
@@ -199,6 +205,7 @@ let drawWidth = drawing.clientWidth;
 let drawHeight = drawing.clientHeight;
 let draw = SVG("drawing").size(drawWidth, drawHeight);
 draw.node.style.backgroundColor = "white";
+let drawPromise = Promise.resolve(drawFromCommand);
 
 let drawItems = []; // tracked so that the items can later be easily deleted
 
@@ -207,7 +214,9 @@ let consoleReturnColor = "#3994ff",
     consoleWarnColor = "#ff9100",
     consolePrintColor = "#0dff00",
     consoleDrawColor = "#00fff0",
-    consoleInputColor = "#d6e4ff"
+    consoleInputColor = "#d6e4ff";
+
+let consoleHistory = [], consoleHistoryIndex = -1, consoleTempInput = '';
 
 console_input.style.color = consoleInputColor;
 
@@ -436,20 +445,6 @@ png_scale_factor_input.oninput = function() {
   pngScaleFactor = parseFloat(png_scale_factor_input.value);
 };
 
-function output2String(o) {
-  function arrayToString(arr) {
-    let str = "[ ";
-    for (let i = 0; i < arr.length; i++) {
-      if (Array.isArray(arr[i])) {
-        str += arrayToString(arr[i]);
-      } else str += arr[i] + " ";
-    }
-    return str + "] ";
-  }
-  if (Array.isArray(o)) o = arrayToString(o);
-  return o;
-}
-
 function handleOutput(o, displayAll) {
   function printableObj(obj) {
     let str = "{"
@@ -473,7 +468,7 @@ function handleOutput(o, displayAll) {
       if (displayAll) {
         writeToConsole([printableObj(o[i])], consoleDrawColor);
       }
-      drawFromCommand(o[i]);
+      //drawFromCommand(o[i]);
     } else if (displayAll) {
       writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
     }
@@ -501,10 +496,30 @@ function writeToConsole(text, color) {
   editor2.scrollTop = editor2.scrollHeight;
 }
 
-console_input.onkeypress = function(event) {
-  if (event.keyCode == 13) {
+console_input.onkeydown = e => {
+  if(event.keyCode == 38) {
+    console.log(consoleHistory);
+    if(consoleTempInput == '')
+      consoleTempInput = console_input.value;
+    if(consoleHistoryIndex >= 0)
+      console_input.value = consoleHistory[consoleHistoryIndex--];
+    else
+      consoleHistoryIndex = -1;
+  } else if(event.keyCode == 40) {
+    console.log(consoleHistory);
+    if(consoleTempInput && consoleHistoryIndex + 1 == consoleHistory.length) {
+      console_input.value = consoleTempInput;
+      consoleTempInput = '';
+    } else if (consoleHistoryIndex + 1 < consoleHistory.length)
+      console_input.value = consoleHistory[++consoleHistoryIndex];
+  } else if (event.keyCode == 13) {
     let txt = console_input.value;
-    console_input.value = "";
+    consoleHistory.push(txt);
+    if(consoleHistory.length > 25)
+      consoleHistory.shift();
+    consoleHistoryIndex = consoleHistory.length - 1;
+    console.log(consoleHistory);
+    console_input.value = consoleTempInput = "";
     writeToConsole("> " + txt, consoleInputColor);
     if (txt == "help") {
       writeToConsole(["SCHEMATICA/LISK CONSOLE HELP INFORMATION:",
@@ -550,11 +565,13 @@ library_btn.onclick = function() {
   }
 };
 
+let exampleIndex = 0; // why does it need to be random? just go through them...
 rand_btn.onclick = function() {
   if (editor.getValue() != "") {
     if (!confirm("There is text in the editor that will be overwritten and lost - continue?")) return;
   }
-  let chosen = exampleDiagrams[Math.floor(exampleDiagrams.length * Math.random())]
+  let chosen = exampleDiagrams[exampleIndex++];
+  exampleIndex %= exampleDiagrams.length;
   editor.setValue(chosen);
   console.log(chosen);
   render_btn.click();

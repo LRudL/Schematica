@@ -113,14 +113,13 @@ function liskEval(expr, env) {
     }
     return val;
   }
-  if (key == "lambda" || key == "!") {
+  if (key == "!") {
     let parameters = expr[1];
     if (Array.isArray(parameters)) {
       return makeProcedure(parameters, expr.slice(2), env);
     }
     return makeProcedure([parameters], expr.slice(2), env);
-    // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here) IT IS HERE NOW
-    // if they're equivalent, just add the other case
+    // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here) MOVED IT AGAIN
   }
   if (key == "//") return "#u"; // <-- used for commenting; for instance: (// a sample comment)
   if (key == "macro") {
@@ -490,7 +489,9 @@ function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a
   }
   drawObj.dasharray = strokeProp[0];
   drawObj.linecap = strokeProp[1];
-  liskOutput.push(drawObj);
+  //console.log(drawObj);
+  drawPromise.then(x => x(drawObj));
+  // drawFromCommand(drawObj);
   return "#u";
 }
 
@@ -694,7 +695,7 @@ function getPrimitiveProcedure(procName, env) {
           if (style.includes("underline")) decoration = "underline";
           if (style.includes("strikethrough")) decoration = "line-through"; // could it have both?
         }
-        liskOutput.push( {
+        const drawObj = {
           command: "draw",
           type : "text",
           content : unstringify(content),
@@ -704,19 +705,23 @@ function getPrimitiveProcedure(procName, env) {
           color : unstringify(color),
           fontSize : fontSize,
           fontFamily: unstringify(fontFamily)
-        })
+        };
+        //console.log(drawObj);
+        drawPromise.then(x => x(drawObj));
         return "#u";
       }
     case "draw-tex":
       return function(content, x, y, fontSize) {
-        liskOutput.push( {
+        const drawObj = {
           command : "draw",
           type : "tex",
           x : x,
           y : y,
           fontSize : fontSize * 2,
           content : unstringify(content)
-        });
+        };
+        //console.log(drawObj);
+        drawPromise.then(x => x(drawObj));
         return "#u";
       }
     default:
@@ -820,6 +825,8 @@ function JIT(str, env = globalEnv) { // Just-in-time interpreter: calls liskEval
     else {
       if(!isNaN(+match))
         match = +match;
+      else if(match == 'lambda')
+        match = '!';
       temp.push(match);
     }
     if(!temp.parent)
@@ -843,7 +850,7 @@ function createWarnObj(text) {
   liskOutput.push({command : "warn",
           text: text});
 }
-
+/*
 function arrayToString(arr) { // un-nest functions whenever possible. JavaScript doesn't remember local functions.
   let str = "[ "; // you don't want the interpreter interpreting the same function more than once.
   for (let i = 0, l = arr.length; i < l; ++i) {
@@ -853,12 +860,12 @@ function arrayToString(arr) { // un-nest functions whenever possible. JavaScript
   }
   return str + "] ";
 }
-
+*/
 function output2String(o) {
-  if (Array.isArray(o)) o = arrayToString(o);
-  return o;
+  if (Array.isArray(o))
+    return '(' + o.map(output2String).join(' ') + ')';
+  return o.toString();
 }
-
 
 /* EVALUATOR FUNCTION:
 

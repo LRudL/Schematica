@@ -5,7 +5,7 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
   // You can't save a variable named [Symbol('stack')].
   _hop = Object.prototype.hasOwnProperty, // shorthand for looking up env.has()
   strToken = /"(\\?[^\\"]|\\[\\"])*"/g, token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g,
-  epsilon = 1e-10, stackLimit = 1024, loopLimit = 32768,
+  epsilon = 2.3283064365386963e-10, stackLimit = 1024, loopLimit = 32768,
   floatEq = (a, b) => Math.abs(a - b) < epsilon,
   arrayEq = (a, b) => a >= b && b >= a,
   unstringify = x => x.slice(1, -1),
@@ -17,7 +17,7 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
       y = rotl(t, 13);
       return r;
     };
-    f.float = () => f() * 2.3283064365386963e-10;
+    f.float = () => f() * epsilon;
     f.seed = (a, b) => {
       x = a;
       y = b;
@@ -32,7 +32,8 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
     if(output === undefined)
       return '#u';
     if(Array.isArray(output))
-      output.forEach((e, i, a) => a[i] = replaceSymbols(e));
+      for(let i = output.length; i--;)
+        output[i] = replaceSymbols(output[i]);
     return output;
   },
   decompile = expr => { // like arrayToString(), but can be recompiled
@@ -55,14 +56,13 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
     [get]: makeEnv.get, // [get] actually corresponds to env.getEnv(). env.get(name) is now equivalent to env[name].
     [set]: makeEnv.set, // also note that in the original lisk.js, running (let __proto__ 4) fails silently. This would fix the obscure bug.
     [Symbol.toPrimitive]: makeEnv.val // more hacks
-  }),
-  rand = xoroshiro64(Date.now(), performance.now());
+  });
 makeEnv.has = { value: function(name) { return _hop.call(this, name); } }; // hack
 makeEnv.get = { value: function(name) { if(this[has](name)) return this; const b = this[base]; if(b) return b[get](name); return b; } };
 makeEnv.set = { value: function(name, value) { if(this[has](name) || !this[base]) this[name] = value; else this[base][set](name, value); return value; } };
-makeEnv.val = { value: function(hint) { if(hint == 'number') return NaN; return Object.entries(this).join(';').replace(/\s+/g, ' '); } };
+makeEnv.val = { value: function(hint) { if(hint == 'number') return this[stack]; return Object.entries(this).join(';').replace(/\s+/g, ' '); } };
 
-const globalEnv = makeEnv(), proc = Object.create(null), macros = Object.create(null), output = [];
+const globalEnv = makeEnv(), proc = Object.create(null), macros = Object.create(null), output = [], rand = xoroshiro64(Date.now(), performance.now());
 globalEnv['#t'] = globalEnv['#T'] = true;
 globalEnv['#f'] = globalEnv['#F'] = false;
 globalEnv['#u'] = globalEnv['#U'] = undefined;
@@ -84,8 +84,8 @@ proc['&'] = (...arr) => arr.reduce((a, b) => a & b);
 proc['|'] = (...arr) => arr.reduce((a, b) => a | b);
 proc['^'] = (...arr) => arr.reduce((a, b) => a ^ b);
 proc['~'] = x => ~x;
-proc['++'] = x => x + 1;
-proc['--'] = x => x - 1;
+proc['++'] = x => ++x;
+proc['--'] = x => --x;
 proc['>'] = (first, ...rest) => rest.every(x => first > x + epsilon); // approx
 proc['<'] = (first, ...rest) => rest.every(x => first + epsilon < x);
 proc['>='] = (first, ...rest) => rest.every(x => first >= x); // exact
@@ -93,17 +93,19 @@ proc['<='] = (first, ...rest) => rest.every(x => first <= x);
 proc['='] = (first, ...rest) => rest.every(x => floatEq(first, x)); // approx
 proc['=='] = (first, ...rest) => rest.every(x => arrayEq(first, x)); // exact
 proc['!='] = (x, y) => !floatEq(x, y);
+proc['!=='] = (x, y) => x != y;
 proc['<<'] = (x, d) => x << d;
 proc['>>'] = (x, d) => x >> d;
 proc['<<<'] = rotl;
 proc['>>>'] = (x, d) => x >>> d;
+proc['%'] = (x, m) => x % m;
 proc.ng = x => -x;
 proc.ln = Math.log; // ln is log, log is log on any base, defaults to base e
 proc.log = (x, y = Math.E) => Math.log(x) / Math.log(y);
 proc.mod = (x, y) => x - Math.floor(x / y) * y; // mod implies the modulo operator, not the remainder operator. These are different!
-proc.seed = (x = Math.random() * 4294967296 >>> 0, y = 0x5f375a86) => rand.seed(x, y); // call without arguments to seed randomly
+proc.seed = (x = Math.random() * 4294967296 >>> 0, y = Date.now()) => rand.seed(x, y); // call without arguments to seed randomly
 proc.random = (x = 0, y = 1) => rand.float() * (y - x) + x; // This way you can have both deterministic and nondeterministic randomness.
-proc['rand-int'] = (x = 0xffffffff) => rand() % x;
+proc['rand-int'] = (x = 0x100000000) => rand() % x;
 proc.not = x => !x;
 proc.and = proc['&&'] = (...arr) => arr.every(Boolean);
 proc.or = proc['||'] = (...arr) => arr.some(Boolean);
@@ -169,21 +171,24 @@ class Macro {
   }
   static BindingReplacer(bindings, template) { // how was expr even used
     let expanded = [];
-    for (const t of template) {
-      if (Array.isArray(t)) {
+    for (const t of template)
+      if (Array.isArray(t))
         expanded.push(Macro.BindingReplacer(bindings, t));
-      } else if (typeof t == "string" && bindings[t] != undefined) {
+      else if (typeof t == "string" && bindings[t] != undefined)
         expanded.push(bindings[t]);
-      } else {
+      else
         expanded.push(t);
-      }
-    }
     return expanded;
   }
   expand(expr) {
     let bindings = Macro.BindingFinder(this.inputFormat, expr);
     return Macro.BindingReplacer(bindings, this.outputFormat); // don't pass an argument if it's not used
   }
+  /*
+  toString() {
+    return this.name + ` = ${decompile(this.inputFormat)} => ${decompile(this.outputFormat)}`;
+  }
+  */
 }
 
 const validate = str => {
@@ -292,8 +297,8 @@ listEval = (exprs, env, i = 0) => {
     case 'quote':
       return expr[1];
     case 'let':
-      // if(env[expr[1]] !== undefined) // Overwriting a variable with a local variable is common practice.
-        // console.warn('Redeclaration of ' + expr[1]); // Doing so shields the base variable from unwanted side effects.
+      if(env[expr[1]] !== undefined) // Overwriting a variable with a local variable is common practice.
+        console.warn('Redeclaration of ' + expr[1]); // Doing so shields the base variable from unwanted side effects.
       return env[expr[1]] = evaluate(expr[2], env);
     case 'set':
       if(env[has](expr[1]) || env[expr[1]] !== undefined) // sets the variable at the correct environment frame, not overwriting.
@@ -351,8 +356,15 @@ listEval = (exprs, env, i = 0) => {
         return retVal;
       };
     case 'def':
-      expr[0] = '!';
-      return env[expr[1].shift()] = evaluate(expr, env);
+      // (def (fn x y) (* x y)) // somehow using expr[1].shift() breaks literally everything, even though the arguments are correctly placed.
+      // console.log(decompile(expr));
+      // console.log(decompile(['let', expr[1][0], ['!', expr[1].slice(1), ...expr.slice(2)]]));
+      return evaluate(['let', expr[1][0], ['!', expr[1].slice(1), ...expr.slice(2)]], env);
+    case 'map':
+      // (map op list) -> new-list
+      const op = expr[1];
+      var newEnv = makeEnv(env);
+      return evaluate(expr[2], env).map(e => evaluate([op, e], newEnv));
     case 'eval':
       return evaluate(expr[1], env);
     case 'draw': // TODO: hook up to lisk draw
@@ -360,14 +372,22 @@ listEval = (exprs, env, i = 0) => {
     case 'draw-tex':
       return;
     case 'macro':
+      console.log(expr);
       macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
     case '//':
       return;
     case 'debug':
       return console.log(expr, env);
     default:
-      if(macros[fn])
-        return evaluate(macros[fn].expand(expr), env);
+      if(macros[fn]) {
+        console.log(decompile(expr));
+        let expanded = macros[fn].expand(expr);
+        console.log(fn, expanded);
+        let result = evaluate(expanded, env);
+        console.log('result', result);
+        //console.log('recompile', decompile(evaluate(result, makeEnv(env))));
+        return result;
+      }
   }
   if(typeof fn != 'function')
     fn = evaluate(fn, env);
@@ -393,12 +413,49 @@ const tests = [
   ['for', '(let k 0) (for i 0 (< i 10) (++ i) (set k (+ k i))) k', 45],
   ['recursion', '(def (factorial x) (if (== x 1) x (* x (factorial (- x 1))))) (factorial 5)', 120],
   ['list/composite', '(let f (! x (* x 3))) (def (g x) (+ x 1)) (def (composite fn-list) (if (= (length fn-list) 1) (car fn-list) (! x ((car fn-list) ((composite (cdr fn-list)) x))))) ((composite (list f g f g)) 2)', 30],
-  ['string', '(str-concat "(]:\\" \'\\\\\\"\\ " ")[:\\" ")', '\"(]:\\\" \'\\\\\\\"\\ )[:\\\" \"']
+  ['string', '(str-concat "(]:\\" \'\\\\\\"\\ " ")[:\\" ")', '\"(]:\\\" \'\\\\\\\"\\ )[:\\\" \"'],
+  ['math', '(= 0 (cos (asin (- 13 (max 4 8 (min 12 16 20))))))', '#t'],
+  ['map', '(map (! x (* x 2)) \'(1 2 3))', [2, 4, 6]]
 ], test = () => {
   for(const t of tests) {
     const r = JIT(t[1], makeEnv(globalEnv));
-    console.log(t[0], r, t[2], r == t[2]);
+    console.log(t[0], r, t[2], arrayEq(r, t[2]));
   }
 }
 test();
-// still can't run libraryCode for some reason, will have to debug
+const groupexpr = `(def (caar l) (car (car l)))
+(def (cadr l) (car (cdr l)))
+(def (cdar l) (cdr (car l)))
+(def (cddr l) (cdr (cdr l)))
+
+(def (group-expr-maker val)
+  (if (list? val)
+    (list (list '= '--arg-- (list 'quote (car val)))
+          (list 'if (list '= (car val) #u)
+                (cadr val)
+                (car val)))
+    (list (list '= '--arg-- (list 'quote val)) val)))
+
+(// (def (map op l)
+  (def (mapper l op result-l)
+    (if (= (length l) 0)
+      result-l
+      (mapper (rest l) op (append result-l (op (first l))))))
+  (mapper l op '())))
+
+(def (strip-cdrs lst)
+  (map (! li (if (list? li)
+            (car li) li))
+       lst))
+(macro (group #name #vals..)
+  (eval (list 'def (concat (list '#name) (strip-cdrs '#vals..))
+          (list '! (list '--arg--)
+                (concat (list 'cond)
+                        (map group-expr-maker '#vals..))))))
+(group stroke-style (width 1) (color "black") (style "solid"))`;
+JIT(groupexpr, globalEnv);
+debugger;
+const expanded = macros.group.expand(JIT('(group stroke-style (width 1) (color "black") (style "solid"))'), globalEnv, 2);
+console.log(decompile(expanded))
+console.log('(eval (list (quote def) (concat (list (quote stroke-style)) (strip-cdrs (quote ((width 1) (color "black") (style "solid"))))) (list (quote !) (list (quote --arg--)) (concat (list (quote cond)) (map group-expr-maker (quote ((width 1) (color "black") (style "solid"))))))))')
+const out = evaluate(expanded[1], globalEnv);
