@@ -48,13 +48,13 @@ let exampleDiagrams = [
  500)
 
 
-(let incr (/ tau 120))
+(let incr (/ 360 120))
 (let innerr 100)
 (let outerr 200)
 (let mid (coord (/ canvas-width 2) (/ canvas-height 2)))
 (let iv (vector innerr 0))
 (let ov (vector outerr 0))
-(for a 0 (< a tau) (+ a incr)
+(for a 0 (< a 360) (+ a incr)
      (curve (coord+vect mid (ov 'rotated a))
             (coord+vect mid (ov 'rotated (+ a incr)))
             (stroke: (stroke-style (color: "red"))))
@@ -201,7 +201,7 @@ let exampleDiagrams = [
      (if (= n 1)
        (ellipse (x-of eloc) (y-of eloc) 10 5 ang (fill: "yellow")))
      (for i 0 (< i 3) (++ i)
-       (rbranch (-- n) eloc (+ ang (rand-from (list (/ pi 4) (ng (/ pi 4)))))
+       (rbranch (-- n) eloc (+ ang (rand-from (list 45 (ng 45))))
                 (* r (rand-between 0.6 0.9))
                 (* w (rand-between 0.6 0.8))
                 (color-from-scale 0.2 col1 0 col2 1) col2 (+ ss 1.5)
@@ -209,7 +209,7 @@ let exampleDiagrams = [
     #t))
 
 
-(rbranch 6 (coord (x-of mid) (- canvas-height 200)) (ng pi/2) 150 12 "#ff0000" "#ffff00" 0)`,
+(rbranch 6 (coord (x-of mid) (- canvas-height 200)) -90 150 12 "#ff0000" "#ffff00" 0)`,
 
 `(def (rand-apply f n)
   (for i 0 (< i n) (++ i)
@@ -462,5 +462,66 @@ let exampleDiagrams = [
 (lseg outpoint anotherpoint)
 (text "V(out)" outpoint)
 
-(text "V(1)" (over rpoint1 120))`
+(text "V(1)" (over rpoint1 120))`,
+
+`(def (grid-apply f int)
+  (for x 0 (< x canvas-width) (+ x int)
+       (for y 0 (< y canvas-height) (+ y int)
+            (f x y))))
+
+
+(let xmid 400)
+(let ymid 400)
+(let mid (coord xmid ymid))
+(let dashed (stroke-style (style: "dashed")))
+
+(def (out-vector x y size col)
+  (circle x y (* size 0.5) (fill: col))
+  (circle x y size (stroke: (stroke-style (color: col)))))
+
+(out-vector xmid ymid 15 "black")
+
+(grid-apply
+ (! (x y)
+    (if (not (and (= x xmid) (= y ymid)))
+      (begin
+       (let d (distance (coord x y) mid))
+       (out-vector x y
+                (/ 20 (log (/ d 5)))
+                "blue"))))
+ 50)
+
+(def (B-vect r a1 a2)
+  (let p1 (coord+vect mid
+                      ((vector r 0) 'rotated a1)))
+  (let p2 (coord+vect mid
+                      ((vector r 0) 'rotated a2)))
+  (arrow p1 p2
+         (stroke: (stroke-style (width: 2) (color: "red")))))
+
+(def (B-field r)
+  (let incr (/ 360 (/ r 6)))
+  (let p1 (coord 0 0))
+  (let p2 (coord 0 0))
+  (for a 360 (> a 0) (- a incr)
+       (B-vect r a (- a (* (/ 1 (/ r 50) )incr)))))
+
+(B-field 50)
+(B-field 100)
+(B-field 180)
+
+(let o
+     (circle xmid ymid 200
+             (stroke: dashed)))
+
+(let a (* 360 (random)))
+
+(let i (o 'tangent a))
+((i 'draw))
+(let l (line-from-points mid (coord+vect mid (o 'radial-vect a))
+                  (stroke: dashed)))
+
+(let intr (i 'intersect l))
+
+(circle (x-of intr) (y-of intr) 5 (fill: "green"))`
 ]

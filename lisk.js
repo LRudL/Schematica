@@ -494,6 +494,8 @@ function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a
   // drawFromCommand(drawObj);
   return "#u";
 }
+const rad = deg => deg * Math.PI / 180;
+const deg = rad => rad / Math.PI * 180;
 
 function getPrimitiveProcedure(procName, env) {
   switch (procName) {
@@ -544,6 +546,7 @@ function getPrimitiveProcedure(procName, env) {
     case "round": return Math.round;
     case "floor": return Math.floor;
     case "ceil": return Math.ceil;
+    case "abs": return Math.abs;
     case ">": return (first, ...rest) => boolConvert(rest.every(x => first - x > floatingPrecision));
     /*
       return function() {
@@ -571,12 +574,12 @@ function getPrimitiveProcedure(procName, env) {
         return argsToArray(arguments, isNaN).reduce((acc, val) => acc / val);
       }
     case "mod": return (a, b) => a % b;
-    case "sin": return Math.sin;
-    case "cos": return Math.cos;
-    case "tan": return Math.tan;
-    case "asin": return Math.asin;
-    case "acos": return Math.acos;
-    case "atan": return Math.atan;
+    case "sin": return x => Math.sin(rad(x));
+    case "cos": return x => Math.cos(rad(x));
+    case "tan": return x => Math.tan(rad(x));
+    case "asin": return x => deg(Math.asin(x));
+    case "acos": return x => deg(Math.acos(x));
+    case "atan": return x => deg(Math.atan(x));
     case "exp": return Math.exp;
     case "pow": return Math.pow;
     case "sqrt": return Math.sqrt;
