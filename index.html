@@ -4,7 +4,28 @@
 <head>
 <title>Schematica</title>
 <meta charset="utf-8"/>
-
+<script type="text/javascript">
+  // this is to configure MathJax
+  // MathJax is supposed to be loaded as soon as possible, with any required additional components (e.g. boldsymbols)
+  MathJax = { // so that we can use the packages without having to worry whether they're present
+    loader: { // specify the package address (without the .js)
+      load: ['input/tex/extensions/boldsymbol'],
+      'input/tex/extensions/boldsymbol': {
+        // ready: name => console.log(name + ' ready'), // assume working, only error if failed
+        failed: error => console.log(error.package + ' failed')
+      }
+    },
+    tex: {
+      packages: {'[+]': ['boldsymbol']},
+      inlineMath: [['$', '$']]
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 <style>
 body {
   font-family: Monaco;
@@ -165,21 +186,6 @@ button:active {
   <link rel="stylesheet" href="libraries/codemirror/blackboard.css">
   <script src="libraries/codemirror/modified_clojure.js"></script>
   <script src="libraries/codemirror/matchbrackets.js"></script>
-
-  <script type="text/javascript">
-    // this is to configure MathJax
-    MathJax = {
-      tex: {
-        inlineMath: [['$', '$']]
-      },
-      svg: {
-        fontCache: 'global'
-      }
-    };
-  </script>
-  <script type="text/javascript" id="MathJax-script" async
-    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
-  </script>
 
   <!--SCHEMATICA/LISK FILES: -->
   <script type="text/javascript" src="lisk.js"></script>
@@ -583,6 +589,13 @@ editor.on("cursorActivity", function() {
   editor.matchBrackets();
   // ^ there should be no need for this because CodeMirror should call this automatically ...
 }); // apparently not; spent 1 hour looking for this which I commented out by mistake
+
+function updateURL(code){
+  code = code.trim();
+  if(code.length)
+    window.history.pushState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+}
+
 render_btn.onclick = function() {
   deleteDrawItems();
   // drawItems = drawFromCommandList(drawCommands(getProcessedCode()));
@@ -596,10 +609,12 @@ render_btn.onclick = function() {
     JIT(editor.getValue()); // runs the default library (because the library is showing)
     liskOutput = [];
     JIT(userCode); // runs user code
+    updateURL(userCode);
   } else {
     JIT(libraryCode); // runs the default library
     liskOutput = [];
     JIT(editor.getValue()); // runs user code
+    updateURL(editor.getValue());
   }
   /* ^ cases separated because otherwise pressing render when Schematica library open
      would run the library code twice (generating a bunch of obnoxious warnings)*/
@@ -607,8 +622,11 @@ render_btn.onclick = function() {
   console.timeEnd(timeText);
   handleOutput(liskOutput);
 };
-
+let param;
 if (!performTests()) alert("Automatic tests failed to validate the Lisk implementation – see browser console for details");
+else if(param = window.location.search.match(/\?(?:.+&)?code=([^&]+)/)) // get userCode from param
+  editor.setValue(decodeURIComponent(param[1]));
+delete param;
 resetGlobalEnv();
 
 render_btn.click();
