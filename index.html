@@ -11,8 +11,15 @@
     loader: { // specify the package address (without the .js)
       load: ['input/tex/extensions/boldsymbol'],
       'input/tex/extensions/boldsymbol': {
-        // ready: name => console.log(name + ' ready'), // assume working, only error if failed
+        //ready: name => void(name), // assume working, only error if failed
         failed: error => console.log(error.package + ' failed')
+      },
+      ready: () => {
+        MathJax.loader.defaultReady(); // LIES!
+        // ok, basically after MathJax is "ready" you have to let the call stack get cleared (???)
+        // that is achieved by setting an immediate timeout with a delay of 4ms
+        // calling render_btn.click() directly will *not* produce errors, but will *also not* draw the TeX symbols.
+        setTimeout(() => render_btn.click(), 0);
       }
     },
     tex: {
@@ -296,7 +303,7 @@ function tikzFromCommand(cmd) {
       } else {
         throw "Encountered unexpected color format while converting to TikZ: " + color;
       }
-      return `{rgb,255:red,${r}; green,${g}; blue,${b}"}`;
+      return `{rgb,255:red,${r}; green,${g}; blue,${b}}`;
     }
     // else: pray that all HTML color words ("black", "blue", whatever) are similar enough in TikZ
     return color;
@@ -494,10 +501,9 @@ function writeToConsole(text, color) {
 
 console_input.onkeydown = e => { // console history feature: allows navigating
   if(event.keyCode == 38) { // through previous inputs using up and down arrows
-    if(consoleHistoryIndex == consoleHistory.length) {
+    if(consoleHistoryIndex == consoleHistory.length)
       consoleHistory.push(console_input.value);
-      console_input.value = consoleHistory[--consoleHistoryIndex];
-    } else if (consoleHistoryIndex)
+    if (consoleHistoryIndex)
       console_input.value = consoleHistory[--consoleHistoryIndex];
   } else if(event.keyCode == 40) {
     if(consoleHistoryIndex == consoleHistory.length)
@@ -592,8 +598,14 @@ editor.on("cursorActivity", function() {
 
 function updateURL(code){
   code = code.trim();
-  if(code.length)
-    window.history.pushState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+  if(code.length) // design choice: add any changes to history or just keep replacing 1 entry in history?
+    window.history.replaceState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+    // window.history.pushState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+    // ^ this allows using "back" button on browser to return to a previous version of the code
+    // potentially clogs browser history
+    // window.history.replaceState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+    // ^ this keeps only 1 entry of Schematica in history, rewriting it as you change the code parameter
+    // only keeps most recent run version of saved code
 }
 
 render_btn.onclick = function() {
@@ -628,8 +640,6 @@ else if(param = window.location.search.match(/\?(?:.+&)?code=([^&]+)/)) // get u
   editor.setValue(decodeURIComponent(param[1]));
 delete param;
 resetGlobalEnv();
-
-render_btn.click();
 
   </script>
 </body>
