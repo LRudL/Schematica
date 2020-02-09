@@ -168,14 +168,14 @@ button:active {
 
   <script type="text/javascript">
     // this is to configure MathJax
-    /*MathJax = {
+    MathJax = {
       tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']]
+        inlineMath: [['$', '$']]
       },
       svg: {
         fontCache: 'global'
       }
-    };*/
+    };
   </script>
   <script type="text/javascript" id="MathJax-script" async
     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
@@ -206,7 +206,7 @@ let drawWidth = drawing.clientWidth;
 let drawHeight = drawing.clientHeight;
 let draw = SVG("drawing").size(drawWidth, drawHeight);
 draw.node.style.backgroundColor = "white";
-let drawPromise = Promise.resolve(drawFromCommand);
+//let drawPromise = Promise.resolve(drawFromCommand);
 
 let drawItems = []; // tracked so that the items can later be easily deleted
 
@@ -217,7 +217,7 @@ let consoleReturnColor = "#3994ff",
     consoleDrawColor = "#00fff0",
     consoleInputColor = "#d6e4ff";
 
-let consoleHistory = [], consoleHistoryIndex = -1, consoleTempInput = '';
+let consoleHistory = ['help'], consoleHistoryIndex = 1;
 
 console_input.style.color = consoleInputColor;
 
@@ -290,7 +290,7 @@ function tikzFromCommand(cmd) {
       } else {
         throw "Encountered unexpected color format while converting to TikZ: " + color;
       }
-      return "{rgb,255:red," + r + "; green," + g + "; blue," + b + "}";
+      return `{rgb,255:red,${r}; green,${g}; blue,${b}"}`;
     }
     // else: pray that all HTML color words ("black", "blue", whatever) are similar enough in TikZ
     return color;
@@ -315,12 +315,9 @@ function tikzFromCommand(cmd) {
       y-coordinates must be inverted IN ADDITION to being passed to this function*/
   }
   function vertexList(vertices) {
-    let str = "";
-    vertices.push(vertices[0]);
-    for (let i = 0; i < vertices.length; i++) {
-      str += "(" + n(vertices[i][0]) + "," + n(-vertices[i][1]) + ")";
-      if (i != vertices.length - 1) str += " -- ";
-    }
+    let str = `(${n(vertices[0][0])},${n(-vertices[0][1])})`;
+    for(let i = vertices.length; i--;)
+      str += ` -- (${n(vertices[i][0])},${n(-vertices[i][1])})`;
     return str;
   }
   switch (cmd.type) {
@@ -328,24 +325,18 @@ function tikzFromCommand(cmd) {
       TikZ uses a different set of axes -> must prefix any y-coords with a minus sign
     */
     case "line":
-      return "\\draw [line width=" + n(cmd.thickness) + ", draw=" + tikzColor(cmd.color)
-        + "] (" + n(cmd.x1) + "," + n(-cmd.y1) + ") -- (" + n(cmd.x2) + "," + n(-cmd.y2) + ");";
+      return `\\draw [line width=${n(cmd.thickness)}, draw=${tikzColor(cmd.color)}] (${n(cmd.x1)},${n(-cmd.y1)}) -- (${n(cmd.x2)},${n(-cmd.y2)});`;
     case "circle":
-      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
-        + "] (" + n(cmd.x) + "," + n(-cmd.y) + ") circle (" + n(cmd.r) + ");";
+      return `\\draw [fill=${tikzColor(cmd.fill)}, draw=${tikzColor(cmd.outlineColor)}, line width=${n(cmd.outlineThickness)}] (${n(cmd.x)},${n(-cmd.y)}) circle (${n(cmd.r)});`;
     case "ellipse":
-      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
-        + "] (" + n(cmd.x) + "," + n(-cmd.y) + ") ellipse (" + n(cmd.rx) + " and " + n(cmd.ry ) + ");";
+      return `\\draw [fill=${tikzColor(cmd.fill)}, draw=${tikzColor(cmd.outlineColor)}, line width=${n(cmd.outlineThickness)}] (${n(cmd.x)},${n(-cmd.y)}) ellipse (${n(cmd.rx)} and ${n(cmd.ry )});`;
       // TO DO: Add support for rotated ellipses
     case "polygon":
-      return "\\draw [fill=" + tikzColor(cmd.fill) + ", draw=" + tikzColor(cmd.outlineColor) + ", line width=" + n(cmd.outlineThickness)
-        + "] " + vertexList(cmd.vertices) + ";";
+      return `\\draw [fill=${tikzColor(cmd.fill)}, draw=${tikzColor(cmd.outlineColor)}, line width=${n(cmd.outlineThickness)}] ${vertexList(cmd.vertices)};`;
     case "text":
-      return "\\node [anchor=north west, text=" + tikzColor(cmd.color) + ", font=" + tikzFontSize(cmd.fontSize * tikzScaleFactor)
-        + "] at (" + n(cmd.x) + "," + n(-cmd.y) + ") {" + cmd.content + "};";
+      return `\\node [anchor=north west, text=${tikzColor(cmd.color)}, font=${tikzFontSize(cmd.fontSize * tikzScaleFactor)}] at (${n(cmd.x)},${n(-cmd.y)}) {${cmd.content}};`;
     case "tex":
-      return "\\node [anchor=north west" + ", font=" + tikzFontSize(cmd.fontSize * tikzScaleFactor)
-        + "] at (" + n(cmd.x) + "," + n(-cmd.y) + ") {$" + cmd.content + "$};";
+      return `\\node [anchor=north west, font=${tikzFontSize(cmd.fontSize * tikzScaleFactor)}] at (${n(cmd.x)},${n(-cmd.y)}) {$${cmd.content}$};`;
     default:
       console.log("Unknown object type encountered when converting to TikZ: " + cmd.type);
       break;
@@ -446,16 +437,16 @@ png_scale_factor_input.oninput = function() {
   pngScaleFactor = parseFloat(png_scale_factor_input.value);
 };
 
-function handleOutput(o, displayAll) {
-  function printableObj(obj) {
-    let str = "{"
-    for (var prop in obj) {
-      if (obj.hasOwnProperty(prop)) {
-        str += prop + ": " + obj[prop] + "; "
-      }
+function printableObj(obj) {
+  let str = "{";
+  for (var prop in obj) {
+    if (obj.hasOwnProperty(prop)) {
+      str += prop + ": " + obj[prop] + "; ";
     }
-    return str + "}";
   }
+  return str + "}";
+}
+function handleOutput(o, displayAll) {
   for (let i = 0; i < o.length; i++) {
     if (o[i].command == "print") {
       writeToConsole(o[i].text, consolePrintColor);
@@ -469,7 +460,7 @@ function handleOutput(o, displayAll) {
       if (displayAll) {
         writeToConsole([printableObj(o[i])], consoleDrawColor);
       }
-      //drawFromCommand(o[i]);
+      drawFromCommand(o[i]);
     } else if (displayAll) {
       writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
     }
@@ -483,44 +474,42 @@ function displayAllOutput(o) {
 }
 
 function writeToConsole(text, color) {
-  if (typeof text == "object") { // assume it's an arrays
+  if (Array.isArray(text)) { // assume it's an arrays
     for (let i = 0; i < text.length; i++) {
       writeToConsole(text[i], color);
     }
+  } else if (color == undefined) {
+    editor2text.innerHTML += `<p>${text}</p>`;
   } else {
-    if (color == undefined) {
-      editor2text.innerHTML += "<p>" + text + "</p>";
-    } else {
-      editor2text.innerHTML += "<p style='color:" + color + "'>" + text + "</p>";
-    }
+    editor2text.innerHTML += `<p style='color:${color}'>${text}</p>`;
   }
   editor2.scrollTop = editor2.scrollHeight;
 }
 
-console_input.onkeydown = e => {
-  if(event.keyCode == 38) {
-    console.log(consoleHistory);
-    if(consoleTempInput == '')
-      consoleTempInput = console_input.value;
-    if(consoleHistoryIndex >= 0)
-      console_input.value = consoleHistory[consoleHistoryIndex--];
-    else
-      consoleHistoryIndex = -1;
+console_input.onkeydown = e => { // console history feature: allows navigating
+  if(event.keyCode == 38) { // through previous inputs using up and down arrows
+    if(consoleHistoryIndex == consoleHistory.length) {
+      consoleHistory.push(console_input.value);
+      console_input.value = consoleHistory[--consoleHistoryIndex];
+    } else if (consoleHistoryIndex)
+      console_input.value = consoleHistory[--consoleHistoryIndex];
   } else if(event.keyCode == 40) {
-    console.log(consoleHistory);
-    if(consoleTempInput && consoleHistoryIndex + 1 == consoleHistory.length) {
-      console_input.value = consoleTempInput;
-      consoleTempInput = '';
-    } else if (consoleHistoryIndex + 1 < consoleHistory.length)
-      console_input.value = consoleHistory[++consoleHistoryIndex];
+    if(consoleHistoryIndex == consoleHistory.length)
+      return;
+    console_input.value = consoleHistory[++consoleHistoryIndex];
+    if(consoleHistoryIndex + 1 == consoleHistory.length)
+      console_input.value = consoleHistory.pop();
   } else if (event.keyCode == 13) {
-    let txt = console_input.value;
+    let txt = console_input.value.trim(); // ignore whitespace around text, also don't store them in consoleHistory
+    console_input.value = '';
+    if(!txt.length) // don't allow empty string
+      return;
+    if(consoleHistoryIndex < consoleHistory.length)
+      consoleHistory.pop();
     consoleHistory.push(txt);
-    if(consoleHistory.length > 25)
+    if(consoleHistory.length > 50)
       consoleHistory.shift();
-    consoleHistoryIndex = consoleHistory.length - 1;
-    console.log(consoleHistory);
-    console_input.value = consoleTempInput = "";
+    consoleHistoryIndex = consoleHistory.length;
     writeToConsole("> " + txt, consoleInputColor);
     if (txt == "help") {
       writeToConsole(["SCHEMATICA/LISK CONSOLE HELP INFORMATION:",

@@ -490,8 +490,9 @@ function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a
   drawObj.dasharray = strokeProp[0];
   drawObj.linecap = strokeProp[1];
   //console.log(drawObj);
-  drawPromise.then(x => x(drawObj));
+  // drawPromise.then(x => x(drawObj));
   // drawFromCommand(drawObj);
+  liskOutput.push(drawObj);
   return "#u";
 }
 const rad = deg => deg * Math.PI / 180;
@@ -710,7 +711,8 @@ function getPrimitiveProcedure(procName, env) {
           fontFamily: unstringify(fontFamily)
         };
         //console.log(drawObj);
-        drawPromise.then(x => x(drawObj));
+        //drawPromise.then(x => x(drawObj));
+        liskOutput.push(drawObj);
         return "#u";
       }
     case "draw-tex":
@@ -724,7 +726,8 @@ function getPrimitiveProcedure(procName, env) {
           content : unstringify(content)
         };
         //console.log(drawObj);
-        drawPromise.then(x => x(drawObj));
+        //drawPromise.then(x => x(drawObj));
+        liskOutput.push(drawObj);
         return "#u";
       }
     default:
