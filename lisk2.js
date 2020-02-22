@@ -3,8 +3,7 @@
 const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get = Symbol('get'), set = Symbol('set'),
   // reason for using symbols is that the entire string namespace is reserved for environment variables.
   // You can't save a variable named [Symbol('stack')].
-  _hop = Object.prototype.hasOwnProperty, // shorthand for looking up env.has()
-  strToken = /"(\\?[^\\"]|\\[\\"])*"/g, token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g,
+  _hop = {}.hasOwnProperty, // shorthand for looking up env.has()
   epsilon = 2.3283064365386963e-10, stackLimit = 1024, loopLimit = 32768,
   floatEq = (a, b) => Math.abs(a - b) < epsilon,
   arrayEq = (a, b) => a >= b && b >= a,
@@ -43,26 +42,23 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
       return '(' + expr.map(decompile).join(' ') + ')';
     return expr.toString();
   },
-  time = (fn, args) => {
+  time = (fn, ...args) => {
     console.time(fn.name);
-    const res = fn(args);
+    const res = fn(...args);
     console.timeEnd(fn.name);
     return res;
   },
   makeEnv = (baseEnv = null) => Object.create(baseEnv, { // dark magic
     [base]: { value: baseEnv }, // null has no properties, unlike false! false.__proto__ --> Boolean { false }
-    [stack]: { value: baseEnv ? baseEnv[stack] + 1 : 0 }, // basically, this eliminates the need for env.get(), but I have no idea whether
-    [has]: makeEnv.has, // that's faster or just useless. It depends on how the browser optimizes the prototype chain.
-    [get]: makeEnv.get, // [get] actually corresponds to env.getEnv(). env.get(name) is now equivalent to env[name].
-    [set]: makeEnv.set, // also note that in the original lisk.js, running (let __proto__ 4) fails silently. This would fix the obscure bug.
-    [Symbol.toPrimitive]: makeEnv.val // more hacks
-  });
-makeEnv.has = { value: function(name) { return _hop.call(this, name); } }; // hack
-makeEnv.get = { value: function(name) { if(this[has](name)) return this; const b = this[base]; if(b) return b[get](name); return b; } };
-makeEnv.set = { value: function(name, value) { if(this[has](name) || !this[base]) this[name] = value; else this[base][set](name, value); return value; } };
-makeEnv.val = { value: function(hint) { if(hint == 'number') return this[stack]; return Object.entries(this).join(';').replace(/\s+/g, ' '); } };
-
+    [stack]: { value: baseEnv ? baseEnv[stack] + 1 : 0 } // basically, this eliminates the need for env.get(), but I have no idea whether
+  }); // that's faster or just useless. It depends on how the browser optimizes the prototype chain.
+// [get] actually corresponds to env.getEnv(). env.get(name) is now equivalent to env[name].
+// also note that in the original lisk.js, running (let __proto__ 4) fails silently. This would fix the obscure bug.
 const globalEnv = makeEnv(), proc = Object.create(null), macros = Object.create(null), output = [], rand = xoroshiro64(Date.now(), performance.now());
+globalEnv[has] = function(name) { return _hop.call(this, name); };
+globalEnv[get] = function(name) { if(this[has](name)) return this; const b = this[base]; if(b) return b[get](name); return b; };
+globalEnv[set] = function(name, value) { if(this[has](name) || !this[base]) this[name] = value; else this[base][set](name, value); return value; };
+globalEnv[Symbol.toPrimitive] = function(hint) { if(hint == 'number') return this[stack]; return Object.entries(this).join(';').replace(/\s+/g, ' '); };
 globalEnv['#t'] = globalEnv['#T'] = true;
 globalEnv['#f'] = globalEnv['#F'] = false;
 globalEnv['#u'] = globalEnv['#U'] = undefined;
@@ -105,7 +101,7 @@ proc.log = (x, y = Math.E) => Math.log(x) / Math.log(y);
 proc.mod = (x, y) => x - Math.floor(x / y) * y; // mod implies the modulo operator, not the remainder operator. These are different!
 proc.seed = (x = Math.random() * 4294967296 >>> 0, y = Date.now()) => rand.seed(x, y); // call without arguments to seed randomly
 proc.random = (x = 0, y = 1) => rand.float() * (y - x) + x; // This way you can have both deterministic and nondeterministic randomness.
-proc['rand-int'] = (x = 0x100000000) => rand() % x;
+proc['rand-int'] = (x = 0, y = 4294967296) => rand() % (y - x) + x;
 proc.not = x => !x;
 proc.and = proc['&&'] = (...arr) => arr.every(Boolean);
 proc.or = proc['||'] = (...arr) => arr.some(Boolean);
@@ -191,8 +187,10 @@ class Macro {
   */
 }
 
-const validate = str => {
-  str = str.replace(strToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
+const strToken = /"(\\?[^\\"]|\\[\\"])*"/g, token = /('|\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^'()\s":]+)/g, quoteToken = /'\s*(?!$|\s|\))/g,
+validate = str => {
+  str = str.replace(strToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'))
+           .replace(quoteToken, s => '\''.padEnd(s.length, '_'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
   for(let i = 0, l = str.length; i < l; ++i) {
@@ -211,7 +209,7 @@ const validate = str => {
         openPos.pop();
         break;
       case '\'':
-        if(str[i + 1] === undefined || /[\s')]/.test(str[i + 1]))
+        if(str[i + 1] === undefined || /[\s)]/.test(str[i + 1]))
           throw new SyntaxError(`' requires a valid operand on line ${line}, column ${column}`);
         break;
       case '"':
@@ -224,53 +222,85 @@ const validate = str => {
     throw new SyntaxError(`${openClose} unmatched (, last one on line ${line}, column ${column}`);
   }
   return true;
-}, JIT = (str, env = globalEnv, options = 0) => { // Just-in-time compiler, options = 0: normal; 1: validate only; 2: parse only
+}, JIT = (str, env = globalEnv, options = 4) => {
   try {
     validate(str);
   } catch(err) {
     console.warn(err);
     return false;
   }
-  if(options & 1) // validate only, do not parse
+  if(!options) // validate only, do not parse
     return true;
   const matches = str.match(token);
   if(!matches)
     return;
-  let temp = ['begin'], result;
+  let expr = ['begin'], inQuote = 0, result, stack = [];
   for(let match of matches) {
+    /*
     if(match == '\'(') {
       const parent = temp;
       temp = [];
       temp.parent = parent;
-      parent.push(["quote", temp]);
+      parent.push(['quote', temp]);
     } else if(match[0] == '\'')
-      temp.push(["quote", match.slice(1)]);
-    else if(match == '(') {
-      const parent = temp;
-      temp = [];
-      temp.parent = parent;
-      parent.push(temp);
-    } else if(match == ')')
-      temp = temp.parent; // this creates circular references (temp.parent[temp.length - 1] === temp), but shouldn't be too bad.
-    else {
+      temp.push(['quote', match.slice(1)]);
+      */
+    if(match == '(') {
+      //const parent = temp;
+      const temp = [];
+      expr.push(temp);
+      stack.push(expr);
+      expr = temp;
+      //temp.parent = parent;
+      //parent.push(temp);
+    } else if(match == ')') {
+      //temp = temp.parent; // this creates circular references (temp.parent[temp.length - 1] === temp), but shouldn't be too bad.
+      expr = stack.pop();
+      if(inQuote)
+        if(!--inQuote)
+          expr = stack.pop();
+          //temp = temp.parent;
+    } else if(match == '\'') {
+      ++inQuote;
+      //const parent = temp;
+      const temp = ['quote'];
+      expr.push(temp);
+      stack.push(expr);
+      expr = temp;
+      //temp.parent = parent;
+      //parent.push(temp);
+    } else {
       if(!isNaN(+match))
         match = +match;
-      temp.push(match);
+      else if(globalEnv[has](match))
+        match = globalEnv[match];
+      expr.push(match);
+      if(expr[0] == 'quote') {
+        while(inQuote--) {
+          expr = stack.pop();
+          //temp = temp.parent;
+        }
+      }
     }
-    if(options & 2)
+    if(options < 4)
       continue;
-    if(!temp.parent) {
-      const expr = temp.pop();
+    if(!stack.length) {
+      const part = expr.pop();
       try {
-        result = evaluate(expr, env);
+        result = evaluate(part, env);
       } catch(err) {
-        console.warn(err, decompile(expr));
+        console.warn(err, decompile(part));
       }
     }
   }
-  if(options & 2) // parse only, do not run
-    return temp;
-  return replaceSymbols(result);
+  //if(options & 4) // non-JIT evaluation
+    //return replaceSymbols(evaluate(temp, env));
+  if(options < 2) // parse only, do not run
+    return decompile(expr);
+  if(options == 4)
+    return replaceSymbols(result);
+  return replaceSymbols(evaluate(expr, env));
+  //return replaceSymbols(result);
 },
 isSelfEvaluating = expr => expr === undefined || expr == '#u' || typeof expr == 'number' || expr[0] == '"' || typeof expr == 'boolean',
 listEval = (exprs, env, i = 0) => {
@@ -279,7 +309,7 @@ listEval = (exprs, env, i = 0) => {
     evaluate(exprs[i], env);
   return evaluate(exprs[l], env);
 }, evaluate = (expr, env) => {
-  if(env[stack] > stackLimit)
+  if(env > stackLimit)
     throw new InternalError(`too much recursion; expr = ${decompile(expr)}, env = ` + env);
   if(typeof expr != 'object') {
     if(isSelfEvaluating(expr))
@@ -412,9 +442,11 @@ const tests = [
   ['constant', '(let e 1) e', 1],
   ['for', '(let k 0) (for i 0 (< i 10) (++ i) (set k (+ k i))) k', 45],
   ['recursion', '(def (factorial x) (if (== x 1) x (* x (factorial (- x 1))))) (factorial 5)', 120],
-  ['list/composite', '(let f (! x (* x 3))) (def (g x) (+ x 1)) (def (composite fn-list) (if (= (length fn-list) 1) (car fn-list) (! x ((car fn-list) ((composite (cdr fn-list)) x))))) ((composite (list f g f g)) 2)', 30],
+  ['list/composite', '(let f (! x (* x 3))) (def (g x) (+ x 1)) (def (composite fn-list) (if (= (length fn-list) 1) (car fn-list)\
+    (! x ((car fn-list) ((composite (cdr fn-list)) x))))) ((composite (list f g f g)) 2)', 30],
   ['string', '(str-concat "(]:\\" \'\\\\\\"\\ " ")[:\\" ")', '\"(]:\\\" \'\\\\\\\"\\ )[:\\\" \"'],
   ['math', '(= 0 (cos (asin (- 13 (max 4 8 (min 12 16 20))))))', '#t'],
+  ['quote', '(let foo \'x) (let bar \'\' x) (let baz \' \' \'x) (list foo bar baz)', ['x', ['quote', 'x'], ['quote', ['quote', 'x']]]],
   ['map', '(map (! x (* x 2)) \'(1 2 3))', [2, 4, 6]]
 ], test = () => {
   for(const t of tests) {
@@ -423,6 +455,8 @@ const tests = [
   }
 }
 test();
+
+/*
 const groupexpr = `(def (caar l) (car (car l)))
 (def (cadr l) (car (cdr l)))
 (def (cdar l) (cdr (car l)))
@@ -457,5 +491,8 @@ JIT(groupexpr, globalEnv);
 debugger;
 const expanded = macros.group.expand(JIT('(group stroke-style (width 1) (color "black") (style "solid"))'), globalEnv, 2);
 console.log(decompile(expanded))
-console.log('(eval (list (quote def) (concat (list (quote stroke-style)) (strip-cdrs (quote ((width 1) (color "black") (style "solid"))))) (list (quote !) (list (quote --arg--)) (concat (list (quote cond)) (map group-expr-maker (quote ((width 1) (color "black") (style "solid"))))))))')
+console.log('(eval (list (quote def) (concat (list (quote stroke-style)) (strip-cdrs (quote ((width 1) (color "black")\
+(style "solid"))))) (list (quote !) (list (quote --arg--)) (concat (list (quote cond)) (map group-expr-maker (quote ((width 1)\
+(color "black") (style "solid"))))))))')
 const out = evaluate(expanded[1], globalEnv);
+*/

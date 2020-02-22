@@ -40,8 +40,20 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 - If an ellipse is rotated, the TikZ export of the diagram will not feature a rotated ellipse (TikZ export in general is not guaranteed to work).
 - Creating a line with its angle set to 0 results in an error being logged to the Lisk console (though the line does render properly).
 - A circle's point-at-angle function returns the point at the negative of the given angle (also other angle inversions, e.g. relating to circle tangents).
+- Nested quote expressions (e.g. `(let foo ''bar)`) causes undefined behavior.
+  - The expected behavior should be setting `foo` to the list `(quote bar)`, but no implementations follow this behavior.
 
 ## Version history
+
+### v0.4.1
+
+- Interface
+  - Added command history in the interactive console; navigate with up/down arrows.
+  - Interactive console now uses a bigger font and smaller margin.
+  - Saves user code in the url on run.
+- Fixes
+  - Correctly loads MathJax boldsymbol extension
+  - Fixed degree vs radian inconsistencies
 
 ### v0.4.0
 
@@ -76,13 +88,10 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 - Lisk
   - Optimized parser.
   - Refactored and optimized evaluator.
-
 - Libraries
   - Removed JQuery.
-
 - Interface
   - Interactive console now only has vertical scroll bar when needed.
-
 - Fixes
   - Bracket matching is restored.
 
@@ -93,7 +102,6 @@ You can try Schematica at https://lrudl.github.io/Schematica/
   - Optimized parser.
   - Syntax errors now give line and column number of the error.
   - Quotes now support escaped quotes (" \\" " no longer errors).
-
 
 ### v0.3.0
 

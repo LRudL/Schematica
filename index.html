@@ -219,7 +219,7 @@ let drawWidth = drawing.clientWidth;
 let drawHeight = drawing.clientHeight;
 let draw = SVG("drawing").size(drawWidth, drawHeight);
 draw.node.style.backgroundColor = "white";
-//let drawPromise = Promise.resolve(drawFromCommand);
+let drawPromise = Promise.resolve(drawFromCommand);
 
 let drawItems = []; // tracked so that the items can later be easily deleted
 
@@ -519,6 +519,7 @@ console_input.onkeydown = e => { // console history feature: allows navigating
     if(consoleHistoryIndex < consoleHistory.length)
       consoleHistory.pop();
     consoleHistory.push(txt);
+    console_input.placeholder = txt;
     if(consoleHistory.length > 50)
       consoleHistory.shift();
     consoleHistoryIndex = consoleHistory.length;
