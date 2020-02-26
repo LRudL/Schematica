@@ -497,7 +497,7 @@ let libraryCode = `(// Schematica Default Library (SDL)
       ((= tag 'draw)
        (draw "ellipse" x y rx ry angle
              fill (stroke 'width) (stroke 'color) (stroke 'style)))
-      (#t (unknown-tag-notice "circle" tag))))
+      (#t (unknown-tag-notice "ellipse" tag))))
   (if draw? (O 'draw))
   O)
 
