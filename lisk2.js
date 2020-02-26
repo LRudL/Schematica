@@ -54,20 +54,25 @@ const stack = Symbol('stack'), base = Symbol('base'), has = Symbol('has'), get =
   }); // that's faster or just useless. It depends on how the browser optimizes the prototype chain.
 // [get] actually corresponds to env.getEnv(). env.get(name) is now equivalent to env[name].
 // also note that in the original lisk.js, running (let __proto__ 4) fails silently. This would fix the obscure bug.
-const globalEnv = makeEnv(), proc = Object.create(null), macros = Object.create(null), output = [], rand = xoroshiro64(Date.now(), performance.now());
-globalEnv[has] = function(name) { return _hop.call(this, name); };
-globalEnv[get] = function(name) { if(this[has](name)) return this; const b = this[base]; if(b) return b[get](name); return b; };
-globalEnv[set] = function(name, value) { if(this[has](name) || !this[base]) this[name] = value; else this[base][set](name, value); return value; };
-globalEnv[Symbol.toPrimitive] = function(hint) { if(hint == 'number') return this[stack]; return Object.entries(this).join(';').replace(/\s+/g, ' '); };
-globalEnv['#t'] = globalEnv['#T'] = true;
-globalEnv['#f'] = globalEnv['#F'] = false;
-globalEnv['#u'] = globalEnv['#U'] = undefined;
-globalEnv.pi = Math.PI;
-globalEnv.e = Math.E;
-globalEnv.tau = Math.PI * 2;
-globalEnv['pi/2'] = Math.PI / 2;
-globalEnv['floating-precision'] = epsilon;
-globalEnv['canvas-width'] = globalEnv['canvas-height'] = globalEnv['canvas-scale'] = 900; // TODO: replace with actual values
+const proc = Object.create(null), macros = Object.create(null), output = [], rand = xoroshiro64(Date.now(), performance.now());
+let globalEnv;
+function resetGlobal() {
+  globalEnv = makeEnv();
+  globalEnv[has] = function(name) { return _hop.call(this, name); };
+  globalEnv[get] = function(name) { if(this[has](name)) return this; const b = this[base]; if(b) return b[get](name); return b; };
+  globalEnv[set] = function(name, value) { if(this[has](name) || !this[base]) this[name] = value; else this[base][set](name, value); return value; };
+  globalEnv[Symbol.toPrimitive] = function(hint) { if(hint == 'number') return this[stack]; return Object.entries(this).join(';'); };
+  globalEnv['#t'] = globalEnv['#T'] = true;
+  globalEnv['#f'] = globalEnv['#F'] = false;
+  globalEnv['#u'] = globalEnv['#U'] = undefined;
+  globalEnv.pi = Math.PI;
+  globalEnv.e = Math.E;
+  globalEnv.tau = Math.PI * 2;
+  globalEnv['pi/2'] = Math.PI / 2;
+  globalEnv['floating-precision'] = epsilon;
+  globalEnv['canvas-width'] = globalEnv['canvas-height'] = globalEnv['canvas-scale'] = 900; // TODO: replace with actual values
+}
+resetGlobal();
 
 // Just write (part of) the standard library in JavaScript! No need to parse the SDL every time then.
 // Object property lookup is also probably faster than switch cases.
@@ -136,7 +141,7 @@ proc.print = proc.cprint = (...arr) => console.log(...arr); // logging; TODO: ho
 // proc['js-eval'] = x => eval(unstringify(x)); // Danger zone but also kind of unnecessary.
 for(const key of Object.getOwnPropertyNames(Math)) { // add all of Math methods that are not already defined
   if(key == 'toSource') continue; // this is a firefox thing... must remove.
-  if(typeof Math[key] == 'function' && proc[key] === undefined) // apparently Math has no enumerable properties, so can't use Object.assign
+  if(typeof Math[key] == 'function' && !proc[key]) // apparently Math has no enumerable properties, so can't use Object.assign
     proc[key] = Math[key]; // e.g. sin, cos, atan2, etc.
 }
 
@@ -236,49 +241,30 @@ validate = str => {
     return;
   let expr = ['begin'], inQuote = 0, result, stack = [];
   for(let match of matches) {
-    /*
-    if(match == '\'(') {
-      const parent = temp;
-      temp = [];
-      temp.parent = parent;
-      parent.push(['quote', temp]);
-    } else if(match[0] == '\'')
-      temp.push(['quote', match.slice(1)]);
-      */
     if(match == '(') {
-      //const parent = temp;
       const temp = [];
       expr.push(temp);
       stack.push(expr);
       expr = temp;
-      //temp.parent = parent;
-      //parent.push(temp);
     } else if(match == ')') {
-      //temp = temp.parent; // this creates circular references (temp.parent[temp.length - 1] === temp), but shouldn't be too bad.
       expr = stack.pop();
       if(inQuote)
         if(!--inQuote)
           expr = stack.pop();
-          //temp = temp.parent;
     } else if(match == '\'') {
       ++inQuote;
-      //const parent = temp;
       const temp = ['quote'];
       expr.push(temp);
       stack.push(expr);
       expr = temp;
-      //temp.parent = parent;
-      //parent.push(temp);
     } else {
       if(!isNaN(+match))
         match = +match;
-      else if(globalEnv[has](match))
-        match = globalEnv[match];
       expr.push(match);
       if(expr[0] == 'quote') {
-        while(inQuote--) {
+        while(inQuote) {
+          --inQuote;
           expr = stack.pop();
-          //temp = temp.parent;
         }
       }
     }
@@ -293,14 +279,11 @@ validate = str => {
       }
     }
   }
-  //if(options & 4) // non-JIT evaluation
-    //return replaceSymbols(evaluate(temp, env));
-  if(options < 2) // parse only, do not run
+  if(options == 1) // parse only, do not run
     return decompile(expr);
-  if(options == 4)
-    return replaceSymbols(result);
-  return replaceSymbols(evaluate(expr, env));
-  //return replaceSymbols(result);
+  if(options == 3)
+    result = evaluate(expr, env);
+  return replaceSymbols(result);
 },
 isSelfEvaluating = expr => expr === undefined || expr == '#u' || typeof expr == 'number' || expr[0] == '"' || typeof expr == 'boolean',
 listEval = (exprs, env, i = 0) => {
@@ -308,128 +291,126 @@ listEval = (exprs, env, i = 0) => {
   for(; i < l; ++i)
     evaluate(exprs[i], env);
   return evaluate(exprs[l], env);
-}, evaluate = (expr, env) => {
-  if(env > stackLimit)
+};
+function evaluate(expr, env) {
+  if(env > stackLimit) // '>' converts env to env[stack] via env[Symbol.toPrimitive]('number')
     throw new InternalError(`too much recursion; expr = ${decompile(expr)}, env = ` + env);
   if(typeof expr != 'object') {
     if(isSelfEvaluating(expr))
       return expr;
     if(proc[expr])
       return proc[expr];
+    if(expr == 'eval')
+      return arr => evaluate(arr, env);
     if(env[has](expr) || env[expr] !== undefined)
       return env[expr];
-    // console.warn(new ReferenceError(expr + ' is not defined; env = ' + env));
+    console.warn(new ReferenceError(expr + ' is not defined;'));
     return;
-    // throw new ReferenceError(expr + ' is not defined; env = ' + env)
   }
-  let fn = expr[0];
-  switch(fn) {
-    case 'quote':
-      return expr[1];
-    case 'let':
-      if(env[expr[1]] !== undefined) // Overwriting a variable with a local variable is common practice.
-        console.warn('Redeclaration of ' + expr[1]); // Doing so shields the base variable from unwanted side effects.
-      return env[expr[1]] = evaluate(expr[2], env);
-    case 'set':
-      if(env[has](expr[1]) || env[expr[1]] !== undefined) // sets the variable at the correct environment frame, not overwriting.
-        return env[set](expr[1], evaluate(expr[2], env));
-      throw new ReferenceError(expr[1] + ' is uninitialized; env = ' + env); // is this necessary though?
-    case 'if':
-      return evaluate(evaluate(expr[1], env) ? expr[2] : expr[3], env);
-    case 'cond':
-      for(let i = 1, l = expr.length; i < l; ++i)
-        if(evaluate(expr[i][0], env))
-          return listEval(expr[i], env, 1);
-    case 'for':
-      var newEnv = makeEnv(env), count = 0, value, // problem with let/const in switch statements. var avoids this.
-        i = expr[1], endExpr = expr[3], nextExpr = expr[4];
-      newEnv[i] = evaluate(expr[2], env);
-      while(evaluate(endExpr, newEnv)) {
-        value = listEval(expr, newEnv, 5);
-        newEnv[i] = evaluate(nextExpr, newEnv);
-        if(++count > loopLimit)
-          throw new InternalError(`too much looping; expr = ${decompile(expr)}, env = ` + env);
-      }
-      return value;
-    case 'for-each':
-      var i = expr[1], list = evaluate(expr[2], env), value;
-      for(const item of list) {
-        const newEnv = makeEnv(env);
-        newEnv[i] = item;
-        value = listEval(expr, newEnv, 3);
-      }
-      return value;
-    case 'begin':
-      return listEval(expr, env, 1);
-    case '!':
-    case 'lambda':
-      let argNames = expr[1];
-      if(!Array.isArray(argNames))
-        argNames = [argNames];
-      var newEnv = makeEnv(env);
-      for(const name of argNames)
-        newEnv[name] = undefined;
-      return function lambda(args, appEnv) {
-        const evalledArgs = [];
-        for(let i = 0, l = args.length; i < l; ++i) {
-          const arg = args[i];
-          let val;
-          if(Array.isArray(arg) && arg[1] == ':')
-            newEnv[arg[0]] = val = evaluate(arg[2], appEnv);
-          else
-            newEnv[argNames[i]] = val = evaluate(arg, appEnv);
-          evalledArgs.push(val);
+  if(Array.isArray(expr)) {
+    let fn = expr[0];
+    switch(fn) {
+      case 'quote':
+        return expr[1];
+      case 'let':
+        var value = evaluate(expr[2], env);
+        if(env[expr[1]] !== undefined) // Overwriting a variable with a local variable is common practice.
+          console.warn(`Redeclaration of ${expr[1]} from ${env[expr[1]]} to ` + value); // Doing so shields the base variable from unwanted side effects.
+        return env[expr[1]] = evaluate(expr[2], env);
+      case 'set':
+        if(env[has](expr[1]) || env[expr[1]] !== undefined) // sets the variable at the correct environment frame, not overwriting.
+          return env[set](expr[1], evaluate(expr[2], env));
+        throw new ReferenceError(expr[1] + ' is uninitialized; env = ' + env); // is this necessary though?
+      case 'if':
+        return evaluate(evaluate(expr[1], env) ? expr[2] : expr[3], env);
+      case 'cond':
+        for(let i = 1, l = expr.length; i < l; ++i)
+          if(evaluate(expr[i][0], env))
+            return listEval(expr[i], env, 1);
+      case 'for':
+        var newEnv = makeEnv(env), count = 0, value, // problem with let/const in switch statements. var avoids this.
+          i = expr[1], endExpr = expr[3], nextExpr = expr[4];
+        newEnv[i] = evaluate(expr[2], env);
+        while(evaluate(endExpr, newEnv)) {
+          value = listEval(expr, newEnv, 5);
+          newEnv[i] = evaluate(nextExpr, newEnv);
+          if(++count > loopLimit)
+            throw new InternalError(`too much looping; expr = ${decompile(expr)}, env = ` + env);
         }
-        newEnv._arguments = evalledArgs;
-        const retVal = listEval(expr, newEnv, 2);
-        // delete newEnv._arguments;
-        return retVal;
-      };
-    case 'def':
-      // (def (fn x y) (* x y)) // somehow using expr[1].shift() breaks literally everything, even though the arguments are correctly placed.
-      // console.log(decompile(expr));
-      // console.log(decompile(['let', expr[1][0], ['!', expr[1].slice(1), ...expr.slice(2)]]));
-      return evaluate(['let', expr[1][0], ['!', expr[1].slice(1), ...expr.slice(2)]], env);
-    case 'map':
-      // (map op list) -> new-list
-      const op = expr[1];
-      var newEnv = makeEnv(env);
-      return evaluate(expr[2], env).map(e => evaluate([op, e], newEnv));
-    case 'eval':
-      return evaluate(expr[1], env);
-    case 'draw': // TODO: hook up to lisk draw
-    case 'draw-text':
-    case 'draw-tex':
-      return;
-    case 'macro':
-      console.log(expr);
-      macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
-    case '//':
-      return;
-    case 'debug':
-      return console.log(expr, env);
-    default:
-      if(macros[fn]) {
-        console.log(decompile(expr));
-        let expanded = macros[fn].expand(expr);
-        console.log(fn, expanded);
-        let result = evaluate(expanded, env);
-        console.log('result', result);
-        //console.log('recompile', decompile(evaluate(result, makeEnv(env))));
-        return result;
-      }
+        return value;
+      case 'for-each':
+        var i = expr[1], list = evaluate(expr[2], env), value;
+        for(const item of list) {
+          const newEnv = makeEnv(env);
+          newEnv[i] = item;
+          value = listEval(expr, newEnv, 3);
+        }
+        return value;
+      case 'begin':
+        return listEval(expr, env, 1);
+      case '!':
+      case 'lambda':
+        let argNames = expr[1];
+        if(!Array.isArray(argNames))
+          argNames = [argNames];
+        var newEnv = makeEnv(env);
+        for(const name of argNames)
+          newEnv[name] = undefined;
+        return function lambda(args, appEnv) {
+          const evalledArgs = [];
+          for(let i = 0, l = args.length; i < l; ++i) {
+            const arg = args[i];
+            let val;
+            if(Array.isArray(arg) && arg[1] == ':')
+              newEnv[arg[0]] = val = evaluate(arg[2], appEnv);
+            else
+              newEnv[argNames[i]] = val = evaluate(arg, appEnv);
+            evalledArgs.push(val);
+          }
+          newEnv._arguments = evalledArgs;
+          const retVal = listEval(expr, newEnv, 2);
+          // delete newEnv._arguments;
+          return retVal;
+        };
+      case 'def': // (def (fn x y) (* x y))
+        return evaluate(['let', expr[1][0], ['!', expr[1].slice(1), ...expr.slice(2)]], env);
+      case 'map': // (map op list) -> new-list
+        var newEnv = makeEnv(env);
+        const op = expr[1], arr = evaluate(expr[2], env);
+        if(!Array.isArray(arr))
+          throw new TypeError(arr + ' is not a list');
+        return arr.map(e => evaluate([op, e], newEnv));
+      case 'draw': // TODO: hook up to lisk draw
+      case 'draw-text':
+      case 'draw-tex':
+        return;
+      case 'macro':
+        //console.log(expr);
+        macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
+      case '//':
+        return;
+      case 'debug':
+        return console.log(expr, env);
+      default:
+        if(macros[fn]) {
+          //return evaluate(macros[fn].expand(expr), env);
+          console.log(decompile(expr));
+          let expanded = macros[fn].expand(expr);
+          console.log(fn, decompile(expanded));
+          let result = evaluate(expanded, env);
+          console.log('result', result);
+          //console.log('recompile', decompile(evaluate(result, makeEnv(env))));
+          return result;
+        }
+    }
+    if(typeof fn != 'function')
+      fn = evaluate(fn, env);
+    if(typeof fn != 'function')
+      throw new TypeError(fn + ` is not a function; expr = ${decompile(expr)}, env = ` + env);
+    if(fn.name == 'lambda')
+      return fn(expr.slice(1), env);
+    return fn(...expr.slice(1).map(x => evaluate(x, env)));
   }
-  if(typeof fn != 'function')
-    fn = evaluate(fn, env);
-  if(typeof fn != 'function')
-    throw new TypeError(fn + ` is not a function; expr = ${decompile(expr)}, env = ` + env);
-  if(fn.name == 'lambda')
-    return fn(expr.slice(1), env);
-  return fn(...expr.slice(1).map(x => evaluate(x, env)));
-  //if(proc[fn])
-    //return proc[fn](...expr.slice(1).map(x => evaluate(x, env)));
-  //if(typeof fn == 'function')
-  //return expr;
 };
 
 const tests = [
@@ -447,7 +428,8 @@ const tests = [
   ['string', '(str-concat "(]:\\" \'\\\\\\"\\ " ")[:\\" ")', '\"(]:\\\" \'\\\\\\\"\\ )[:\\\" \"'],
   ['math', '(= 0 (cos (asin (- 13 (max 4 8 (min 12 16 20))))))', '#t'],
   ['quote', '(let foo \'x) (let bar \'\' x) (let baz \' \' \'x) (list foo bar baz)', ['x', ['quote', 'x'], ['quote', ['quote', 'x']]]],
-  ['map', '(map (! x (* x 2)) \'(1 2 3))', [2, 4, 6]]
+  ['map', '(map (! x (* x 2)) \'(1 2 3))', [2, 4, 6]],
+  ['fn', '(let ans ((if #f + *) 3 2)) ans', 6]
 ], test = () => {
   for(const t of tests) {
     const r = JIT(t[1], makeEnv(globalEnv));

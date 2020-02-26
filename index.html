@@ -599,8 +599,8 @@ editor.on("cursorActivity", function() {
 
 function updateURL(code){
   code = code.trim();
-  if(code.length) // design choice: add any changes to history or just keep replacing 1 entry in history?
-    window.history.replaceState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
+  // design choice: add any changes to history or just keep replacing 1 entry in history?
+  window.history.replaceState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
     // window.history.pushState('','',window.location.pathname + '?code=' + encodeURIComponent(code));
     // ^ this allows using "back" button on browser to return to a previous version of the code
     // potentially clogs browser history

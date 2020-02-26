@@ -16,10 +16,7 @@ const loopLimit = 1 << 15;
 
 const floatingPrecision = 1e-10;
 
-//let evals = 0;
-
 function liskEval(expr, env) {
-  //++evals;
   // expr should be a (possibly nested) array, of the type produced by parseCode
   // (if you want to eval a string, use parseCode first, or the "le" function at the defined bottom of this file)
   // expr should be a single statement
@@ -121,6 +118,11 @@ function liskEval(expr, env) {
     return makeProcedure([parameters], expr.slice(2), env);
     // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here) MOVED IT AGAIN
   }
+  if (key == "def") {
+    const proc = makeProcedure(expr[1].slice(1), expr.slice(2), env);
+    defineVariable(expr[1][0], proc, env);
+    return proc;
+  }
   if (key == "//") return "#u"; // <-- used for commenting; for instance: (// a sample comment)
   if (key == "macro") {
     macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
@@ -139,17 +141,18 @@ function liskEval(expr, env) {
   if (!isProcedure(procedure)) {
     createErrorObj("Non-procedure object treated as procedure", "This is not a procedure in the current scope: " + output2String(key));
   }
-  if (procedure[1].parameters === false) {
+  if (procedure.parameters === false) {
     // ^ this implies that it's a primitive procedure
     /* This is because of implementation details: primitive procedure parameters
        are not declared separately anywhere, but for defined procedures parameters
        must of course be defined, and are included in the procedure object when the
        procedure is defined (see makeProcedure)
     */
-    return applyPrimitiveProcedure(procedure[1].body, expr.slice(1).map(e => liskEval(e, env)), env);
+    const argVals = expr.slice(1).map(e => liskEval(e, env));
+    return getPrimitiveProcedure(procedure.body, env)(...argVals);
   }
-  let newEnv = envWithArgs(procedure[1].parameters, expr.slice(1), procedure[1].environment, env);
-  return liskListEval(procedure[1].body, newEnv);
+  let newEnv = envWithArgs(procedure.parameters, expr.slice(1), procedure.environment, env);
+  return liskListEval(procedure.body, newEnv);
     /* Note difference between newEnv (the environment used when executing the procedure body)
        and env (the current environment, and in which the arguments to the function are evaluated). */
     /* Arguments cannot be evaluated at this point, because named arguments are implemented and
@@ -160,25 +163,17 @@ function liskEval(expr, env) {
 
 function makeProcedure(parameters, body, environment) {
   //let id = parameters == false ? "primitive" : "function";
-  return [parameters ? "function" : "primitive", {
+  return { // simplify procedure. just decide if it's primitive by accessing parameters
     parameters: parameters,
     body: body,
     environment: environment
-  }]
+  };
 }
 
 function isProcedure(proc) {
   // not used by the interpreter (EDIT: NEVER MIND IT IS NOW)
   // (only used to enable the built-in "function?" function for identifying functions)
-  return Array.isArray(proc) && (proc[0] == 'primitive' || proc[0] == 'function');
-}
-/*
-function applyProcedure(proc, env) {
-  return liskListEval(proc[1].body, env);
-}
-*/
-function applyPrimitiveProcedure(proc, argVals, env) {
-  return getPrimitiveProcedure(proc, env)(...argVals);
+  return (typeof proc == 'object') && proc.parameters !== undefined;
 }
 
 class Macro {
@@ -327,17 +322,6 @@ function boolConvert(boo) {
   createErrorObj("Javascript error: boolConvert cannot convert non-boolean value to a boolean", "Value: " + output2String(boo));
   return '#u'; // gotta do something, right?
 }
-/*
-function listOfValues(exprList, env) {
-  // do not confuse with liskListEval
-  return exprList.map(expr => liskEval(expr, env));
-  let r = [];
-  for (let i = 0; i < exprList.length; i++) {
-    r.push(liskEval(exprList[i], env));
-  }
-  return r;
-}
-*/
 function liskListEval(exprList, env, i = 0) {
   // do not confuse with listOfValues
   const l = exprList.length - 1;
@@ -346,12 +330,6 @@ function liskListEval(exprList, env, i = 0) {
   }
   return liskEval(exprList[l], env);
 }
-/*
-function isPrimitiveProcedure(procName) {
-  if (getPrimitiveProcedure(procName) == false) return false;
-  return true; /// why say more words when less do same
-}
-*/
 function floatingEq(a, b) {
   return Math.abs(a - b) < floatingPrecision;
 }
@@ -370,22 +348,6 @@ function arrayEq(ra, rb, nonExactEqualityTesting) {
     return floatingEq(ra, rb);
   }
   return false;
-  /*
-  let isA = Array.isArray(ra);
-  let isB = Array.isArray(rb);
-  if (isA !== isB) return false; // one is array and the other isn't
-  if (isA === false && isB === false) {
-    if (typeof ra == "number" && typeof rb == "number" && nonExactEqualityTesting) {
-      return floatingEq(ra, rb);
-    }
-    return ra == rb;
-  }
-  if (ra.length !== ra.length) return false;
-  for (let i = 0; i < ra.length; i++) {
-    if (!arrayEq(ra[i], rb[i])) return false;
-  }
-  return true;
-  */
 }
 
 function argsToArray(aarghs, checkFunc) { // un-nest inner functions
@@ -400,29 +362,7 @@ function argsToArray(aarghs, checkFunc) { // un-nest inner functions
     arr.forEach(checkFunc); // it should be ok to convert to array and then check for invalid arg type.
   return arr;
 }
-  /*
-  let r = [];
-  let i = 0;
-  while (aarghs.hasOwnProperty(i)) {
-    r.push(aarghs[i]);
-    if (checkFunc !== undefined) { // checkFunc doesn't change, why check it every time?
-      if (checkFunc(aarghs[i])) {
-        createErrorObj("Invalid argument type.", "Primitive procedure '" + procName + "' cannot take the argument: " + aarghs[i]);
-      }
-    }
-    ++i;
-  }
-  return r;
-  */
-/* // no longer needed
-function disqualifyingCompare(disqualifier, args) {
-  // let r = argsToArray(args); // why is this necessary?
-  for (let i = args.length; --i;) { // arguments still have the same .length property. Unroll for speed.
-    if (disqualifier(args[0], args[i])) return "#f";
-  }
-  return "#t";
-}
-*/
+
 function strokeProps(stroke, t) {
   if (stroke != undefined) stroke = unstringify(stroke);
   if (stroke == "dash" || stroke == "dashed")
@@ -502,10 +442,6 @@ function getPrimitiveProcedure(procName, env) {
   switch (procName) {
     // EQUALITY
     case "=": return (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first, true)));
-    /*
-      return function() {
-        return disqualifyingCompare((base, comp) => !arrayEq(base, comp, true), arguments);
-      }*/
     case "==": return (first, ...rest) => boolConvert(rest.every(x => x >= first && first >= x));
     // Note: this optimization assumes first and ...rest do not contain functions.
     // Using the old == code below, (def (f x) x) (== f f) returns "#t" but (== + +) returns "#f", which is already problematic.
@@ -516,22 +452,14 @@ function getPrimitiveProcedure(procName, env) {
         return disqualifyingCompare((base, comp) => !arrayEq(base, comp, false), arguments);
       }*/
     // FUNCTION FUNCTIONS
-    case "function?": return function(func) {
+    case "function?": return func => {
       return boolConvert(isProcedure(func));
     }
 
     // LOGIC FUNCTIONS
-    case "not": return function(a) {
-      return isTrue(a) ? "#f" : "#t";
-    };
-    case "and":
-      return function() {
-        return boolConvert(argsToArray(arguments).every(isTrue));
-      }
-    case "or":
-      return function() {
-        return boolConvert(argsToArray(arguments).some(isTrue));
-      }
+    case "not": return a => isTrue(a) ? "#f" : "#t";
+    case "and": return (...arr) => boolConvert(arr.every(isTrue));
+    case "or": return (...arr) => boolConvert(arr.some(isTrue));
 
     // MATH FUNCTIONS
     case "number?": return n => boolConvert(!isNaN(n));
@@ -549,15 +477,7 @@ function getPrimitiveProcedure(procName, env) {
     case "ceil": return Math.ceil;
     case "abs": return Math.abs;
     case ">": return (first, ...rest) => boolConvert(rest.every(x => first - x > floatingPrecision));
-    /*
-      return function() {
-        return disqualifyingCompare((base, comp) => !(base - comp > floatingPrecision), arguments);
-      }*/
     case "<": return (first, ...rest) => boolConvert(rest.every(x => x - first > floatingPrecision));
-    /*
-      return function() {
-        return disqualifyingCompare((base, comp) => !(comp - base > floatingPrecision), arguments);
-      }*/
     case "+":
       return function() {
         return argsToArray(arguments, isNaN).reduce((acc, val) => acc + val);
@@ -592,65 +512,32 @@ function getPrimitiveProcedure(procName, env) {
     // LIST MANIPULATION FUNCTIONS
     // (note: underlying representation for flat list is that of an array, not nested cons structure like in Lisp)
     case "list?": return r => boolConvert(Array.isArray(r));
-    case "list":
-      return function() {
-        return argsToArray(arguments);
-      }
+    case "list": return (...arr) => arr;
     case "length": return r => r.length;
     case "nth": return (r, i) => r[i];
-    case "set-nth":
-      return function(r, i, val) {
-        r[i] = val;
-        return r;
-      }
+    case "set-nth": return (r, i, val) => (r[i] = val, r);
     case "car": case "first": return r => r[0];
     case "cdr": case "rest": return r => r.slice(1);
     // ^ car and cdr for the Lisp fans ...
     // ... but also the more sensible "first" and "rest" names are available
     case "concat": return (...args) => [].concat(...args);
-    /*
-      return function() {
-        return argsToArray(arguments).reduce((acc, val) => acc.concat(val));
-      }
-      */
-    case "slice":
-      return function(l, s, e) {
-        return l.slice(s, e);
-      }
-    case "reverse":
-      return l => l.reverse();
-    case "cons":
-      return function(el, l) {
-        return [el].concat(l);
-      }
-
+    case "slice": return (l, s, e) => l.slice(s, e);
+    case "reverse": return l => l.reverse();
+    case "cons": return (el, l) => [el].concat(l);
     // STRING FUNCTIONS
     case "string?": return str => boolConvert(typeof str === "string");
-    case "str-concat":
+    case "str-concat": return (...strs) => '"'.concat(...strs.map(unstringify), '"');
+    /*
       return function() {
-        return '"'.concat(...argsToArray(arguments/*, s => typeof s === "string"*/).map(unstringify), '"');
-      }
-    case "str-of":
-      return function(obj) {
-        return '"' + String(obj) + '"';
-      }
-    case "str-slice":
-      return function(str, start, end) {
-        str = unstringify(str);
-        if (end == undefined) end = str.length;
-        return '"' + str.slice(start, end) + '"';
-      }
-    case "str-len":
-      return function(str) {
-        return unstringify(str).length;
-      }
+        return '"'.concat(...argsToArray(arguments, s => typeof s === "string").map(unstringify), '"');
+      }*/
+    case "str-of": return obj => '"' + String(obj) + '"';
+    case "str-slice": return (str, start, end = str.length - 2) => '"' + unstringify(str).slice(start, end) + '"';
+    case "str-len": return str => str.length - 2;
 
     // LOGGING FUNCTIONS
     case "cprint": // cprint = console print; print to JS console
-      return function(x) {
-        console.log(x);
-        return x;
-      }
+      return x => (console.log(x), x);
     case "print": // does not print to console, but pushes print command to output list for some other program to worry about (in the case of base Schematica, this is done in index.html)
       return function(x) {
         liskOutput.push( {
@@ -737,7 +624,7 @@ function getPrimitiveProcedure(procName, env) {
 
 function unstringify(str) { // converts strings like ""stuff"" into "stuff"
   /* This is needed because in Javascript-array representation, everything (e.g. variables)
-  is represented as a string (-> in quotes), while strings are in double quotes like ""this"".*/
+  is represented as a string (-> in quotes), while strings are in double (quadruple?) quotes like ""this"".*/
   return str.slice(1, -1);
 }
 
@@ -765,8 +652,8 @@ function resetGlobalEnv() {
 // PARSING CODE
 
 const stringToken = /"(\\?[^\\"]|\\[\\"])*"/g,
-  token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g;
-const validate = str => {
+  token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g,
+validate = str => {
   str = str.replace(stringToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
@@ -840,7 +727,7 @@ function JIT(str, env = globalEnv) { // Just-in-time interpreter: calls liskEval
         result = liskEval(temp.pop(), env);
       } catch(err) {
         createErrorObj("Javascript error (additional information may have been logged to browser console)", err);
-        throw err; // To fix the error, you must first accept the error.
+        throw err;
       }
   }
   return result;
@@ -856,45 +743,8 @@ function createWarnObj(text) {
   liskOutput.push({command : "warn",
           text: text});
 }
-/*
-function arrayToString(arr) { // un-nest functions whenever possible. JavaScript doesn't remember local functions.
-  let str = "[ "; // you don't want the interpreter interpreting the same function more than once.
-  for (let i = 0, l = arr.length; i < l; ++i) {
-    if (Array.isArray(arr[i]))
-      str += arrayToString(arr[i]);
-    else str += arr[i] + " ";
-  }
-  return str + "] ";
-}
-*/
 function output2String(o) {
   if (Array.isArray(o))
     return '(' + o.map(output2String).join(' ') + ')';
-  return o.toString();
+  return String(o);
 }
-
-/* EVALUATOR FUNCTION:
-
-function le(code, env) {
-  if (env == undefined) env = globalEnv;
-  if(!validate(code))
-    return;
-  let parsed = parseCode(code);
-  //console.log(parsed);
-  for (let i = 0; i < parsed.length; i++) {
-    try {
-      let v = liskEval(parsed[i], globalEnv);
-      if (i == parsed.length - 1) {
-        liskOutput.push({command : "return",
-                         value: v});
-        //console.log("Result:");
-        //console.log(v);
-        return v;
-      }
-    } catch(msg) {
-      console.log(msg);
-      createErrorObj("Javascript error (additional information may have been logged to browser console)", msg);
-    }
-  }
-}
-*/

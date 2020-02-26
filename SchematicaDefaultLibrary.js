@@ -3,7 +3,7 @@ let libraryCode = `(// Schematica Default Library (SDL)
    - that is, the code that runs automatically
   along with every user script that is run.)
 
-(macro (def (#name #args..) #body..)
+(// macro (def (#name #args..) #body..)
   (eval (list 'let '#name (concat (list '! '#args..) '#body..))))
 
 (macro (rep #var #default)
