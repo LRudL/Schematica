@@ -192,10 +192,10 @@ class Macro {
   */
 }
 
-const strToken = /"(\\?[^\\"]|\\[\\"])*"/g, token = /('|\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^'()\s":]+)/g, quoteToken = /'\s*(?!$|\s|\))/g,
+const strToken = /"(\\?[^\\"]|\\[\\"])*"/g, specialToken = /["'\(\)]/g,
+  token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g,
 validate = str => {
-  str = str.replace(strToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'))
-           .replace(quoteToken, s => '\''.padEnd(s.length, '_'));
+  str = str.replace(strToken, s => s.replace(specialToken, '_'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
   for(let i = 0, l = str.length; i < l; ++i) {
@@ -239,40 +239,35 @@ validate = str => {
   const matches = str.match(token);
   if(!matches)
     return;
-  let expr = ['begin'], inQuote = 0, result, stack = [];
+  let temp = ['begin'], result;
   for(let match of matches) {
-    if(match == '(') {
-      const temp = [];
-      expr.push(temp);
-      stack.push(expr);
-      expr = temp;
-    } else if(match == ')') {
-      expr = stack.pop();
-      if(inQuote)
-        if(!--inQuote)
-          expr = stack.pop();
-    } else if(match == '\'') {
-      ++inQuote;
-      const temp = ['quote'];
-      expr.push(temp);
-      stack.push(expr);
-      expr = temp;
-    } else {
+  if(match == '\'(') {
+      const parent = temp;
+      temp = [];
+      temp.parent = parent;
+      parent.push(["quote", temp]); // takes advantage that (quote ()) doesn't care about any arguments after the first
+    } else if(match[0] == '\'')
+      temp.push(["quote", match.slice(1)]);
+    else if(match == '(') {
+      const parent = temp;
+      temp = [];
+      temp.parent = parent;
+      parent.push(temp);
+    } else if(match == ')')
+      temp = temp.parent;
+    else {
       if(!isNaN(+match))
         match = +match;
-      expr.push(match);
-      if(expr[0] == 'quote') {
-        while(inQuote) {
-          --inQuote;
-          expr = stack.pop();
-        }
-      }
+      else if(match == 'lambda')
+        match = '!';
+      temp.push(match);
     }
     if(options < 4)
       continue;
-    if(!stack.length) {
-      const part = expr.pop();
+    if(!temp.parent) {
+      let part;
       try {
+        part = temp.pop();
         result = evaluate(part, env);
       } catch(err) {
         console.warn(err, decompile(part));
@@ -300,16 +295,18 @@ function evaluate(expr, env) {
       return expr;
     if(proc[expr])
       return proc[expr];
-    if(expr == 'eval')
-      return arr => evaluate(arr, env);
+    //if(expr == 'eval')
+      //return arr => evaluate(arr, env);
     if(env[has](expr) || env[expr] !== undefined)
       return env[expr];
     console.warn(new ReferenceError(expr + ' is not defined;'));
     return;
   }
-  if(Array.isArray(expr)) {
+  //if(Array.isArray(expr)) {
     let fn = expr[0];
     switch(fn) {
+      case 'eval':
+        return evaluate(evaluate(expr[1], env), env);
       case 'quote':
         return expr[1];
       case 'let':
@@ -368,7 +365,7 @@ function evaluate(expr, env) {
             evalledArgs.push(val);
           }
           newEnv._arguments = evalledArgs;
-          const retVal = listEval(expr, newEnv, 2);
+          const retVal = listEval(expr.slice(2), newEnv);
           // delete newEnv._arguments;
           return retVal;
         };
@@ -402,7 +399,7 @@ function evaluate(expr, env) {
           //console.log('recompile', decompile(evaluate(result, makeEnv(env))));
           return result;
         }
-    }
+    //}
     if(typeof fn != 'function')
       fn = evaluate(fn, env);
     if(typeof fn != 'function')
@@ -427,7 +424,8 @@ const tests = [
     (! x ((car fn-list) ((composite (cdr fn-list)) x))))) ((composite (list f g f g)) 2)', 30],
   ['string', '(str-concat "(]:\\" \'\\\\\\"\\ " ")[:\\" ")', '\"(]:\\\" \'\\\\\\\"\\ )[:\\\" \"'],
   ['math', '(= 0 (cos (asin (- 13 (max 4 8 (min 12 16 20))))))', '#t'],
-  ['quote', '(let foo \'x) (let bar \'\' x) (let baz \' \' \'x) (list foo bar baz)', ['x', ['quote', 'x'], ['quote', ['quote', 'x']]]],
+  //['quote', '(let foo \'x) (let bar \'\' x) (let baz \' \' \'x) (list foo bar baz)', ['x', ['quote', 'x'], ['quote', ['quote', 'x']]]],
+  ['quote2', '(== \'(1 3 2 (6 5 7 1) 8) (quote (1 3 2 (6 5 7 1) 8)))', '#t'],
   ['map', '(map (! x (* x 2)) \'(1 2 3))', [2, 4, 6]],
   ['fn', '(let ans ((if #f + *) 3 2)) ans', 6]
 ], test = () => {
@@ -437,7 +435,6 @@ const tests = [
   }
 }
 test();
-
 /*
 const groupexpr = `(def (caar l) (car (car l)))
 (def (cadr l) (car (cdr l)))

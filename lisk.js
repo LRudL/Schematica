@@ -8,11 +8,11 @@ let liskOutput = [];
 
 let macros = {};
 
-const stackLimit = 1 << 10; // limit number of recursive function calls before code running halts
+const stackLimit = 4095; // limit number of recursive function calls before code running halts
 /* ^ this allows the Lisk evaluator to notify the user of a stack overflow,
 rather than only having a JS error appear in the browser's console
 */
-const loopLimit = 1 << 15;
+const loopLimit = 65535;
 
 const floatingPrecision = 1e-10;
 
@@ -29,8 +29,8 @@ function liskEval(expr, env) {
   if (typeof expr != "object") { // arrays are objects, so this is a test for whether expr is an array (=list)
     if (isSelfEvaluating(expr))
       return expr;
-    if (getPrimitiveProcedure(expr))
-      return makeProcedure(false, expr, env);
+    if (proc[expr])
+      return proc[expr];
     let varVal = env.get(expr);
     if (varVal === false) {
       createErrorObj("Unknown variable", "The \"variable\" in question: " + expr);
@@ -52,13 +52,10 @@ function liskEval(expr, env) {
     return value;
   }
   if (key == "if") {
-    let predicate = expr[1];
-    let consequent = expr[2];
-    let alternative = expr[3];
-    let truthValue = isTrue(liskEval(predicate, env));
-    if (truthValue) {
-      return liskEval(consequent, env);
+    if (isTrue(liskEval(expr[1], env))) {
+      return liskEval(expr[2], env);
     }
+    let alternative = expr[3];
     if (alternative == undefined) return "#u";
     return liskEval(alternative, env);
   }
@@ -77,20 +74,17 @@ function liskEval(expr, env) {
     return liskListEval(expr, env, 1); // evaluates all expressions in the list and then returns the last
   }
   if (key == "for") {
+    let newEnv = new Environment(env);
     let loopVar = expr[1];
-    let i = liskEval(expr[2], env);
     let nextExpr = expr[4];
     let endExpr = expr[3];
     // let loopExprs = expr.slice(5);
-    let newEnv = new Environment(env);
     let count = 0;
-    defineVariable(loopVar, i, newEnv);
+    defineVariable(loopVar, liskEval(expr[2], env), newEnv);
     let val = "#u";
     while (liskEval(endExpr, newEnv) == "#t") {
       val = liskListEval(expr, newEnv, 5);
-      let nextLoopVarValue = liskEval(nextExpr, newEnv);
-      setVariable(loopVar, nextLoopVarValue, newEnv);
-      i = nextLoopVarValue;
+      setVariable(loopVar, liskEval(nextExpr, newEnv), newEnv);
       if (++count > loopLimit) {
         createErrorObj("Your for-loop looped too much:", output2String(expr));
         return "#u";
@@ -118,6 +112,9 @@ function liskEval(expr, env) {
     return makeProcedure([parameters], expr.slice(2), env);
     // the !-based syntax for lambda is implemented by replacing "!" with "lambda" during the parsing phase (not here) MOVED IT AGAIN
   }
+  if (key == "eval") { // after like hours of refactoring code, this is where I managed to put it
+    return liskEval(liskEval(expr[1], env), env); // putting eval in getPrimitiveProcedure just seems not right
+  } // this does make me wonder; should eval really be like this? Why is it 2 layers of eval?
   if (key == "def") {
     const proc = makeProcedure(expr[1].slice(1), expr.slice(2), env);
     defineVariable(expr[1][0], proc, env);
@@ -125,7 +122,7 @@ function liskEval(expr, env) {
   }
   if (key == "//") return "#u"; // <-- used for commenting; for instance: (// a sample comment)
   if (key == "macro") {
-    macros[expr[1][0]] = new Macro(expr[1][0], expr[1], expr[2]);
+    macros[expr[1][0]] = new Macro(expr[1], expr[2]);
     return "#u";
   }
   if (macros[key] !== undefined) {
@@ -134,22 +131,17 @@ function liskEval(expr, env) {
   }
   /* if none of the previous cases apply, we assume that key is a procedure,
   and apply it to the arguments in the rest of the list */
-  let procedure;
+  const procedure = liskEval(key, env);
+  /* // does this optimization work?
   if (!isProcedure(key)) {
     procedure = liskEval(key, env);
   } else procedure = key; // <-- currently this would only happen when a for-loop is being evaluated
+  */
+  if(typeof procedure == 'function') {
+    return procedure(...expr.slice(1).map(e => liskEval(e, env)));
+  }
   if (!isProcedure(procedure)) {
     createErrorObj("Non-procedure object treated as procedure", "This is not a procedure in the current scope: " + output2String(key));
-  }
-  if (procedure.parameters === false) {
-    // ^ this implies that it's a primitive procedure
-    /* This is because of implementation details: primitive procedure parameters
-       are not declared separately anywhere, but for defined procedures parameters
-       must of course be defined, and are included in the procedure object when the
-       procedure is defined (see makeProcedure)
-    */
-    const argVals = expr.slice(1).map(e => liskEval(e, env));
-    return getPrimitiveProcedure(procedure.body, env)(...argVals);
   }
   let newEnv = envWithArgs(procedure.parameters, expr.slice(1), procedure.environment, env);
   return liskListEval(procedure.body, newEnv);
@@ -162,8 +154,7 @@ function liskEval(expr, env) {
 }
 
 function makeProcedure(parameters, body, environment) {
-  //let id = parameters == false ? "primitive" : "function";
-  return { // simplify procedure. just decide if it's primitive by accessing parameters
+  return { // simplify procedure. primitive procedures are now functions
     parameters: parameters,
     body: body,
     environment: environment
@@ -173,12 +164,11 @@ function makeProcedure(parameters, body, environment) {
 function isProcedure(proc) {
   // not used by the interpreter (EDIT: NEVER MIND IT IS NOW)
   // (only used to enable the built-in "function?" function for identifying functions)
-  return (typeof proc == 'object') && proc.parameters !== undefined;
+  return (typeof proc == 'function') || ((typeof proc == 'object') && proc.parameters !== undefined);
 }
 
 class Macro {
-  constructor(name, inputFormat, outputFormat) {
-    this.name = name;
+  constructor(inputFormat, outputFormat) {
     this.inputFormat = inputFormat;
     this.outputFormat = outputFormat;
   }
@@ -256,8 +246,12 @@ class Environment {
 }
 
 function defineVariable(name, value, env) {
+  if(proc[name]) {
+    createErrorObj(`Unable to override primitive function '${name}' with value '${output2String(value)}'.`);
+    return;
+  }
   if (env.check(name)) {
-    createWarnObj("Previous variable definition overriden with new variable of the same name; variable '" + name + "' has been reset from '" + env.vars[name] + "' to '" + output2String(value) + "'. Use 'set' instead of 'let' when modifying existing variables to avoid warnings.");
+    createWarnObj(`Previous variable definition overriden with new variable of the same name; variable '${name}' has been reset from '${env.vars[name]}' to '${output2String(value)}'. Use 'set' instead of 'let' when modifying existing variables to avoid warnings.`);
   }
   env.add(name, value);
 }
@@ -267,7 +261,7 @@ function setVariable(name, value, env) {
   if (e) {
     e.vars[name] = value;
   } else {
-    createErrorObj("Cannot set value of variable that has not been defined (use 'let' to define).", "Attempted to set the non-existent variable '" + name + "' to " + output2String(value));
+    createErrorObj("Cannot set value of variable that has not been defined (use 'let' to define).", `Attempted to set the non-existent variable '${name}' to '${output2String(value)}'.`);
   }
 }
 
@@ -350,7 +344,7 @@ function arrayEq(ra, rb, nonExactEqualityTesting) {
   return false;
 }
 
-function argsToArray(aarghs, checkFunc) { // un-nest inner functions
+function argsToArray(aarghs, checkFunc, procName) { // un-nest inner functions
   /* the arguments variable available inside a Javascript function is an object
      containing fields 0, 1, ..., n set to the values of the 0th, 1st, ... nth
      argument, rather than being an array (WHY?!). Hence this function is needed
@@ -359,7 +353,9 @@ function argsToArray(aarghs, checkFunc) { // un-nest inner functions
   // I understand your frustration, but watch:
   const arr = Array.from(aarghs);
   if(checkFunc) // since in the original code below, invalid arg type does not throw a javascript error and the while loop resumes,
-    arr.forEach(checkFunc); // it should be ok to convert to array and then check for invalid arg type.
+    // it should be ok to convert to array and then check for invalid arg type.
+    arr.forEach(e => checkFunc(e) &&
+      createErrorObj("Invalid argument type.", `Procedure '${procName}' cannot take the argument: ` + e));
   return arr;
 }
 
@@ -425,202 +421,142 @@ function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a
       strokeProp = strokeProps(a5, drawObj.outlineThickness);
       break;
     default:
-      createErrorObj("Unknown draw type: " + type, "Draw arguments: " + [a1, a2, a3, a4, a5, a6, a7, a8, a9].join(", "));
+      createErrorObj("Unknown draw type: " + type, `Draw arguments: ${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}, ${a8}, ${a9}`);
   }
   drawObj.dasharray = strokeProp[0];
   drawObj.linecap = strokeProp[1];
-  //console.log(drawObj);
   drawPromise.then(x => x(drawObj));
-  // drawFromCommand(drawObj);
   // liskOutput.push(drawObj);
   return "#u";
 }
 const rad = deg => deg * Math.PI / 180;
 const deg = rad => rad / Math.PI * 180;
 
-function getPrimitiveProcedure(procName, env) {
-  switch (procName) {
-    // EQUALITY
-    case "=": return (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first, true)));
-    case "==": return (first, ...rest) => boolConvert(rest.every(x => x >= first && first >= x));
-    // Note: this optimization assumes first and ...rest do not contain functions.
-    // Using the old == code below, (def (f x) x) (== f f) returns "#t" but (== + +) returns "#f", which is already problematic.
-    // Using the new code, all objects (including functions but not arrays) are equal to each other. (== f +) returns "#t".
-    // Hopefully you won't ever need to compare two functions?
-    /*
-      return function() {
-        return disqualifyingCompare((base, comp) => !arrayEq(base, comp, false), arguments);
-      }*/
-    // FUNCTION FUNCTIONS
-    case "function?": return func => {
-      return boolConvert(isProcedure(func));
-    }
-
-    // LOGIC FUNCTIONS
-    case "not": return a => isTrue(a) ? "#f" : "#t";
-    case "and": return (...arr) => boolConvert(arr.every(isTrue));
-    case "or": return (...arr) => boolConvert(arr.some(isTrue));
-
-    // MATH FUNCTIONS
-    case "number?": return n => boolConvert(!isNaN(n));
-    case "integer?": return n => boolConvert(Number.isInteger(n));
-    case "in-base":
-      return function(n, b) {
-        return '"' + n.toString(b) + '"';
-      }
-    case "num-of":
-      return function(n, b = 10) {
-        return parseInt(unstringify(n), b);
-      }
-    case "round": return Math.round;
-    case "floor": return Math.floor;
-    case "ceil": return Math.ceil;
-    case "abs": return Math.abs;
-    case ">": return (first, ...rest) => boolConvert(rest.every(x => first - x > floatingPrecision));
-    case "<": return (first, ...rest) => boolConvert(rest.every(x => x - first > floatingPrecision));
-    case "+":
-      return function() {
-        return argsToArray(arguments, isNaN).reduce((acc, val) => acc + val);
-      }
-    case "-":
-      return function() {
-        return argsToArray(arguments, isNaN).reduce((acc, val) => acc - val);
-      }
-    case "*":
-      return function() {
-        return argsToArray(arguments, isNaN).reduce((acc, val) => acc * val);
-      }
-    case "/":
-      return function() {
-        return argsToArray(arguments, isNaN).reduce((acc, val) => acc / val);
-      }
-    case "mod": return (a, b) => a % b;
-    case "sin": return x => Math.sin(rad(x));
-    case "cos": return x => Math.cos(rad(x));
-    case "tan": return x => Math.tan(rad(x));
-    case "asin": return x => deg(Math.asin(x));
-    case "acos": return x => deg(Math.acos(x));
-    case "atan": return x => deg(Math.atan(x));
-    case "exp": return Math.exp;
-    case "pow": return Math.pow;
-    case "sqrt": return Math.sqrt;
-    case "ln": case "log": return Math.log;
-    case "random": return Math.random;
-    case "min": return Math.min;
-    case "max": return Math.max;
-
-    // LIST MANIPULATION FUNCTIONS
-    // (note: underlying representation for flat list is that of an array, not nested cons structure like in Lisp)
-    case "list?": return r => boolConvert(Array.isArray(r));
-    case "list": return (...arr) => arr;
-    case "length": return r => r.length;
-    case "nth": return (r, i) => r[i];
-    case "set-nth": return (r, i, val) => (r[i] = val, r);
-    case "car": case "first": return r => r[0];
-    case "cdr": case "rest": return r => r.slice(1);
-    // ^ car and cdr for the Lisp fans ...
-    // ... but also the more sensible "first" and "rest" names are available
-    case "concat": return (...args) => [].concat(...args);
-    case "slice": return (l, s, e) => l.slice(s, e);
-    case "reverse": return l => l.reverse();
-    case "cons": return (el, l) => [el].concat(l);
-    // STRING FUNCTIONS
-    case "string?": return str => boolConvert(typeof str === "string");
-    case "str-concat": return (...strs) => '"'.concat(...strs.map(unstringify), '"');
-    /*
-      return function() {
-        return '"'.concat(...argsToArray(arguments, s => typeof s === "string").map(unstringify), '"');
-      }*/
-    case "str-of": return obj => '"' + String(obj) + '"';
-    case "str-slice": return (str, start, end = str.length - 2) => '"' + unstringify(str).slice(start, end) + '"';
-    case "str-len": return str => str.length - 2;
-
-    // LOGGING FUNCTIONS
-    case "cprint": // cprint = console print; print to JS console
-      return x => (console.log(x), x);
-    case "print": // does not print to console, but pushes print command to output list for some other program to worry about (in the case of base Schematica, this is done in index.html)
-      return function(x) {
-        liskOutput.push( {
-          command : "print",
-          text : x
-        });
-        return x;
-      }
-
-    // DARK MAGIC
-    case "eval":
-      return x => liskEval(x, env);
-    case "js-eval":
-      return x => eval(unstringify(x));
-    case "debug":
-      return function() {
-        liskOutput.push( {
-          command : "print",
-          text : "DEBUG"
-        });
-        argsToArray(arguments).map(function(expr) {
-          liskOutput.push( {
-            command : "print",
-            text : liskEval(expr, env)
-          })
-        });
-        console.log("Debugging called; the environment object is this:");
-        console.log(env);
-        console.log("Variables in the current scope:");
-        for (let i in env.vars) {
-          console.log(i + ": " + env.vars[i]);
-        }
-      }
-
-    // DRAW FUNCTIONS
-    case "draw": // the primitive drawing function in Lisk
-      return _lisk_draw;
-    case "draw-text":
-      return function(content, x, y, style, fontSize = 20, color = '"#000000"', fontFamily = '"Baskerville"') {
-        let styling = "", weight = "", decoration = "";
-        // let styles;
-        if (style) {
-          //styles = unstringify(style); // indexOf is for when you need the index; otherwise, use str.include(),
-          if (style.includes("italic")) styling = "italic";
-          if (style.includes("bold")) weight = "bold";
-          if (style.includes("underline")) decoration = "underline";
-          if (style.includes("strikethrough")) decoration = "line-through"; // could it have both?
-        }
-        const drawObj = {
-          command: "draw",
-          type : "text",
-          content : unstringify(content),
-          x : x,
-          y : y,
-          style : styling, weight : weight, decoration: decoration,
-          color : unstringify(color),
-          fontSize : fontSize,
-          fontFamily: unstringify(fontFamily)
-        };
-        //console.log(drawObj);
-        drawPromise.then(x => x(drawObj));
-        //liskOutput.push(drawObj);
-        return "#u";
-      }
-    case "draw-tex":
-      return function(content, x, y, fontSize) {
-        const drawObj = {
-          command : "draw",
-          type : "tex",
-          x : x,
-          y : y,
-          fontSize : fontSize * 2,
-          content : unstringify(content)
-        };
-        //console.log(drawObj);
-        drawPromise.then(x => x(drawObj));
-        //liskOutput.push(drawObj);
-        return "#u";
-      }
-    default:
-      return false;
+const proc = Object.create(null);
+proc['='] = (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first, true)));
+proc['=='] = (first, ...rest) => boolConvert(rest.every(x => x >= first && first >= x));
+proc["function?"] = func => boolConvert(isProcedure(func));
+proc.not = a => isTrue(a) ? "#f" : "#t";
+proc.and = (...arr) => boolConvert(arr.every(isTrue));
+proc.or = (...arr) => boolConvert(arr.some(isTrue));
+proc["number?"] = n => boolConvert(!isNaN(n));
+proc["integer?"] = n => boolConvert(Number.isInteger(n));
+proc["in-base"] = (n, b = 10) => '"' + n.toString(b) + '"';
+proc["num-of"] = (n, b = 10) => parseInt(unstringify(n), b); // using parseFloat leads to NaN somewhere in the evaluation?!
+proc[">"] = (first, ...rest) => boolConvert(rest.every(x => first - x > floatingPrecision));
+proc["<"] = (first, ...rest) => boolConvert(rest.every(x => x - first > floatingPrecision));
+proc["+"] = function() { return argsToArray(arguments, isNaN, '+').reduce((acc, val) => acc + val); };
+proc["-"] = function() { return argsToArray(arguments, isNaN, '-').reduce((acc, val) => acc - val); };
+proc["*"] = function() { return argsToArray(arguments, isNaN, '*').reduce((acc, val) => acc * val); };
+proc["/"] = function() { return argsToArray(arguments, isNaN, '/').reduce((acc, val) => acc / val); };
+proc.mod = (a, b) => a % b;
+for(const fn of ["round", "floor", "ceil", "abs", "exp", "pow", "sqrt", "random", "min", "max"])
+  proc[fn] = Math[fn];
+proc.sin = x => Math.sin(rad(x));
+proc.cos = x => Math.cos(rad(x));
+proc.tan = x => Math.tan(rad(x));
+proc.asin = x => deg(Math.asin(x));
+proc.acos = x => deg(Math.acos(x));
+proc.atan = x => deg(Math.atan(x));
+proc.ln = proc.log = Math.log;
+proc["list?"] = r => boolConvert(Array.isArray(r));
+proc.list = (...arr) => arr;
+proc.length = r => r.length;
+proc.nth = (r, i) => r[i];
+proc["set-nth"] = (r, i, val) => (r[i] = val, r);
+proc.car = proc.first = r => r[0];
+proc.cdr = proc.rest = r => r.slice(1);
+proc.concat = (...args) => [].concat(...args);
+proc.slice = (l, s, e) => l.slice(s, e);
+proc.reverse = l => l.reverse();
+proc.cons = (el, l) => [el].concat(l);
+proc["string?"] = s => boolConvert(s[0] == '"' && s[s.length - 1] == '"');
+proc["str-concat"] = function() {
+  return '"'.concat(...argsToArray(arguments, s => s[0] != '"' || s[s.length - 1] != '"', 'str-concat').map(unstringify), '"');
+};
+proc["str-of"] = obj => '"' + String(obj) + '"';
+proc["str-slice"] = (str, start, end = str.length - 2) => '"' + unstringify(str).slice(start, end) + '"';
+proc["str-len"] = str => str.length - 2;
+proc.cprint = x => (console.log(x), x);
+proc.print = x => (liskOutput.push({command: "print", text: x}), x);
+proc["js-eval"] = x => eval(unstringify(x));
+/*// assuming that you don't use debug... will add back later
+proc.debug = function() {
+  liskOutput.push( {
+    command : "print",
+    text : "DEBUG"
+  });
+  argsToArray(arguments).map(function(expr) {
+    liskOutput.push( {
+      command : "print",
+      text : liskEval(expr, env)
+    })
+  });
+  console.log("Debugging called; the environment object is this:");
+  console.log(env);
+  console.log("Variables in the current scope:");
+  for (let i in env.vars) {
+    console.log(i + ": " + env.vars[i]);
   }
-}
+};
+*/
+proc.draw = _lisk_draw;
+proc["draw-text"] = function(content, x, y, style, fontSize = 20, color = '"#000000"', fontFamily = '"Baskerville"') {
+  let styling = "", weight = "", decoration = "";
+  // let styles;
+  if (style) {
+    //styles = unstringify(style); // indexOf is for when you need the index; otherwise, use str.include(),
+    if (style.includes("italic")) styling = "italic";
+    if (style.includes("bold")) weight = "bold";
+    if (style.includes("underline")) decoration = "underline";
+    if (style.includes("strikethrough")) decoration = "line-through"; // could it have both?
+  }
+  const drawObj = {
+    command: "draw",
+    type : "text",
+    content : unstringify(content),
+    x : x,
+    y : y,
+    style : styling, weight : weight, decoration: decoration,
+    color : unstringify(color),
+    fontSize : fontSize,
+    fontFamily: unstringify(fontFamily)
+  };
+  //console.log(drawObj);
+  drawPromise.then(x => x(drawObj));
+  //liskOutput.push(drawObj);
+  return "#u";
+};
+proc["draw-tex"] = function(content, x, y, fontSize) {
+  const drawObj = {
+    command : "draw",
+    type : "tex",
+    x : x,
+    y : y,
+    fontSize : fontSize * 2,
+    content : unstringify(content)
+  };
+  //console.log(drawObj);
+  drawPromise.then(x => x(drawObj));
+  //liskOutput.push(drawObj);
+  return "#u";
+};
+// moving SDL to proc[] (dangerous!)
+proc["strip-cdrs"] = lst => lst.map(x => Array.isArray(x) ? x[0] : x);
+proc.ng = x => -x;
+proc['++'] = x => x + 1;
+proc['--'] = x => x - 1;
+proc['!='] = (x, y) => boolConvert(!floatingEq(x, y));
+proc.caar = l => l[0][0];
+proc.cadr = l => l.slice(1)[0];
+proc.cdar = l => l[0].slice(1);
+proc.cddr = l => l.slice(2);
+proc.last = l => l[l.length - 1];
+proc.append = (arr, ...elem) => arr.concat(elem);
+proc.deg = deg;
+proc.rad = rad;
+proc["rand-x"] = () => Math.random() * drawWidth;
+proc["rand-y"] = () => Math.random() * drawHeight;
 
 function unstringify(str) { // converts strings like ""stuff"" into "stuff"
   /* This is needed because in Javascript-array representation, everything (e.g. variables)
@@ -638,6 +574,8 @@ function resetGlobalEnv() {
     ["floating-precision", floatingPrecision],
     ["pi", Math.PI],
     ["e", Math.E],
+    ["tau", Math.PI * 2],
+    ["pi/2", Math.PI / 2],
     ["true", "#t"],
     ["false", "#f"],
     ["#T", "#t"],
@@ -651,10 +589,10 @@ function resetGlobalEnv() {
 
 // PARSING CODE
 
-const stringToken = /"(\\?[^\\"]|\\[\\"])*"/g,
+const stringToken = /"(\\?[^\\"]|\\[\\"])*"/g, specialToken = /["'\(\):]/g,
   token = /('?\(|\)|"(\\?[^\\"]|\\[\\"])*"|:|[^()\s":]+)/g,
 validate = str => {
-  str = str.replace(stringToken, s => s.replace(/"/g, '|').replace(/\(/g, '[').replace(/\)/g, ']'));
+  str = str.replace(stringToken, s => s.replace(specialToken, '_'));
   let openClose = 0, line = 1, column = 1;
   const openPos = [];
   for(let i = 0, l = str.length; i < l; ++i) {

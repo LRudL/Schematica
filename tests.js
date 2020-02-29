@@ -23,7 +23,7 @@ premature optimisation is the root of all evil.*/
     "string parsing",
     ['"strings"', eq, '"strings"'],
     ['"do spaces work?"', eq, '"do spaces work?"'],
-    ['"\'(what if) a string contains : special characters\\""', eq, '"\'(what if) a string contains : special characters\\""']
+    ['"\'(what if)\'\' a string contains : special characters\\""', eq, '"\'(what if)\'\' a string contains : special characters\\""']
   ],
   [
     "quotation",
@@ -69,7 +69,7 @@ premature optimisation is the root of all evil.*/
     ["(= -1 -1.0)", eq, "#t"],
     ["(== '(1 3 2 (6 5 7 1) 8) (quote (1 3 2 (6 5 7 1) 8)))", eq, "#t"],
     ["(== '(1 3 2 (5 4 6) 8) '(1 3 2 (5 4 6) 7))", eq, "#f"],
-    ["(== + -)", eq, "#t"], // problematic if you compare objects/functions
+    ["(== + -)", eq, "#f"],
     ["(+ 3 -3)", eq, 0],
     ["(+ 1 1 20 5 5 10)", eq, 42],
     ["(* 1 2 3)", eq, 6],

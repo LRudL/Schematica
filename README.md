@@ -45,7 +45,25 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 
 ## Version history
 
+### v0.4.2
+2020-02-29
+
+- Lisk
+  - Replaced `getPrimitiveProcedure()` with a `proc` object to store all primitive procedures.
+    - `eval` is now a hard-coded procedure within `liskEval()`.
+  - Simplified structure of procedures (both primitive and user-defined).
+  - Evaluator is at least 50% faster on average (tested on Chrome and Firefox).
+- SDL
+  - Replaced `def` macro and some procedures with hard-coded primitive function.
+- Documentation updated to clarify quote abbreviation syntax (`'`)
+- Fixes
+  - `string?` and `str-concat` now perform checks properly.
+  - Single quotes in quoted strings no longer cause false syntax errors.
+  - Restored error reporting when calling a function with invalid arguments.
+    - E.g. `(+ 1 (/ 0 0))` will log "Invalid argument type" due to adding a `NaN`.
+
 ### v0.4.1
+2020-02-22
 
 - Interface
   - Added command history in the interactive console; navigate with up/down arrows.
