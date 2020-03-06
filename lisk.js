@@ -164,7 +164,7 @@ function makeProcedure(parameters, body, environment) {
 function isProcedure(proc) {
   // not used by the interpreter (EDIT: NEVER MIND IT IS NOW)
   // (only used to enable the built-in "function?" function for identifying functions)
-  return (typeof proc == 'function') || ((typeof proc == 'object') && proc.parameters !== undefined);
+  return (typeof proc == 'function') || ((typeof proc == 'object') && proc.body !== undefined);
 }
 
 class Macro {
@@ -329,8 +329,11 @@ function floatingEq(a, b) {
 }
 
 function arrayEq(ra, rb, nonExactEqualityTesting) {
+  if(ra.body && rb.body) { // user-defined procedures
+    return ra == rb;
+  }
   if(ra >= rb && rb >= ra) { // hack
-    return true;
+    return true; // this works for strings, primitive functions (get converted to strings), (nested) arrays, symbols, booleans, etc.
   } else if(nonExactEqualityTesting) {
     if(ra === rb) return true;
     if(ra === undefined || rb === undefined) return false;
@@ -352,7 +355,7 @@ function argsToArray(aarghs, checkFunc, procName) { // un-nest inner functions
   */
   // I understand your frustration, but watch:
   const arr = Array.from(aarghs);
-  if(checkFunc) // since in the original code below, invalid arg type does not throw a javascript error and the while loop resumes,
+  if(checkFunc) // since in the original code, invalid arg type does not throw a javascript error and the while loop resumes,
     // it should be ok to convert to array and then check for invalid arg type.
     arr.forEach(e => checkFunc(e) &&
       createErrorObj("Invalid argument type.", `Procedure '${procName}' cannot take the argument: ` + e));
@@ -434,12 +437,12 @@ const deg = rad => rad / Math.PI * 180;
 
 const proc = Object.create(null);
 proc['='] = (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first, true)));
-proc['=='] = (first, ...rest) => boolConvert(rest.every(x => x >= first && first >= x));
+proc['=='] = (first, ...rest) => boolConvert(rest.every(x => arrayEq(x, first)));
 proc["function?"] = func => boolConvert(isProcedure(func));
 proc.not = a => isTrue(a) ? "#f" : "#t";
 proc.and = (...arr) => boolConvert(arr.every(isTrue));
 proc.or = (...arr) => boolConvert(arr.some(isTrue));
-proc["number?"] = n => boolConvert(!isNaN(n));
+proc["number?"] = n => boolConvert(typeof n == 'number' && !isNaN(n)); // wow, isNaN(false) == false
 proc["integer?"] = n => boolConvert(Number.isInteger(n));
 proc["in-base"] = (n, b = 10) => '"' + n.toString(b) + '"';
 proc["num-of"] = (n, b = 10) => parseInt(unstringify(n), b); // using parseFloat leads to NaN somewhere in the evaluation?!
@@ -479,6 +482,7 @@ proc["str-slice"] = (str, start, end = str.length - 2) => '"' + unstringify(str)
 proc["str-len"] = str => str.length - 2;
 proc.cprint = x => (console.log(x), x);
 proc.print = x => (liskOutput.push({command: "print", text: x}), x);
+proc.clear = () => {editor2text.textContent = "[console cleared]"; return "#u";};
 proc["js-eval"] = x => eval(unstringify(x));
 /*// assuming that you don't use debug... will add back later
 proc.debug = function() {
@@ -546,7 +550,7 @@ proc["strip-cdrs"] = lst => lst.map(x => Array.isArray(x) ? x[0] : x);
 proc.ng = x => -x;
 proc['++'] = x => x + 1;
 proc['--'] = x => x - 1;
-proc['!='] = (x, y) => boolConvert(!floatingEq(x, y));
+proc['!='] = (x, y) => boolConvert(!arrayEq(x, y, true));
 proc.caar = l => l[0][0];
 proc.cadr = l => l.slice(1)[0];
 proc.cdar = l => l[0].slice(1);
@@ -557,6 +561,13 @@ proc.deg = deg;
 proc.rad = rad;
 proc["rand-x"] = () => Math.random() * drawWidth;
 proc["rand-y"] = () => Math.random() * drawHeight;
+proc["rand-point"] = () => ['coord', proc["rand-x"](), proc["rand-y"]()];
+proc.coord = (x, y) => ['coord', x, y];
+proc["x-of"] = p => p[1];
+proc["y-of"] = p => p[2];
+proc["coord?"] = p => boolConvert(p[0] == 'coord');
+proc.distance = (a, b) => Math.hypot(a[1] - b[1], a[2] - b[2]);
+proc["translate-coord"] = (p, dx, dy) => ['coord', p[1] + dx, p[2] + dy];
 
 function unstringify(str) { // converts strings like ""stuff"" into "stuff"
   /* This is needed because in Javascript-array representation, everything (e.g. variables)
@@ -654,8 +665,8 @@ function JIT(str, env = globalEnv) { // Just-in-time interpreter: calls liskEval
     } else if(match == ')')
       temp = temp.parent;
     else {
-      if(!isNaN(+match))
-        match = +match;
+      if(!isNaN(+match)) // this allows "0xf", "0o7", "0b1", "-Infinity" to be considered numbers
+        match = +match; // but not "1_000", "8n" or "NaN"
       else if(match == 'lambda')
         match = '!';
       temp.push(match);

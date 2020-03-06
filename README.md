@@ -61,6 +61,7 @@ You can try Schematica at https://lrudl.github.io/Schematica/
   - Single quotes in quoted strings no longer cause false syntax errors.
   - Restored error reporting when calling a function with invalid arguments.
     - E.g. `(+ 1 (/ 0 0))` will log "Invalid argument type" due to adding a `NaN`.
+  - Functions can now be compared correctly.
 
 ### v0.4.1
 2020-02-22

@@ -19,8 +19,8 @@
         // ok, basically after MathJax is "ready" you have to let the call stack get cleared (???)
         // that is achieved by setting a promise, and calling the resolve function immediately
         // calling render_btn.click() directly will *not* produce errors, but will *also not* draw the TeX symbols.
-        //Promise.resolve(render_btn).then(x => x.click());
-        Promise.resolve(testAll).then(x => x());
+        Promise.resolve(render_btn).then(x => x.click());
+        //Promise.resolve(testAll).then(x => x());
       }
     },
     tex: {
@@ -529,7 +529,7 @@ console_input.onkeydown = e => { // console history feature: allows navigating
                       "Type 'out' to display output from the previous execution",
                       "Any other input will be interpreted as Lisk code and executed."]);
     } else if (txt == "clear") {
-      editor2text.innerHTML = "<p>[console cleared]</p>";
+      editor2text.textContent = "[console cleared]";
     } else if (txt == "erase") {
       deleteDrawItems();
     } else if (txt == "out") {
@@ -626,19 +626,26 @@ render_btn.onclick = function() {
   updateURL(userCode);
   handleOutput(liskOutput);
 };
-
-async function testAll() {
+//*//problems:
+async function testAll() { // okay, calling this function on load takes about 8 seconds, but calling it in the console crashes the browser... wtf? Just to make it worse, this happens ONLY ON FIREFOX.
+  resetGlobalEnv();
+  liskOutput = [];
   const then = performance.now();
   console.log(then);
-  await JIT(libraryCode);
   for(let i = 0, l = exampleDiagrams.length; i < l; ++i) {
+    await JIT(libraryCode);
     liskOutput.length = 0;
     await JIT(exampleDiagrams[i]);
+    //handleOutput(liskOutput);
     console.log(i, performance.now());
+    resetGlobalEnv();
+    liskOutput = [];
   }
   console.log(`Tests took ${performance.now() - then}ms`);
-  JIT(editor.getValue());
+  //await deleteDrawItems();
+  //JIT(editor.getValue());
 }
+//*/
 let param;
 if (!performTests()) alert("Automatic tests failed to validate the Lisk implementation – see browser console for details");
 else if(param = window.location.search.match(/\?(?:.+&)?code=([^&]+)/)) // get userCode from param
