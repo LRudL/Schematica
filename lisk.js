@@ -232,22 +232,12 @@ class Environment {
   add(name, val) { // add variable to CURRENT FRAME
     this.vars[name] = val;
   }
-  set(name, val) { // changes the value of a variable (wherever in the environment it may be)
-    if (this.check(name))
-      this.add(name, val);
-    else {
-      const env = this.get(name);
-      if(env)
-        env.add(name, val);
-      else
-        this.add(name, val);
-    }
-  }
+  // set(name, val){} // this isn't used
 }
 
 function defineVariable(name, value, env) {
   if(proc[name]) {
-    createErrorObj(`Unable to override primitive function '${name}' with value '${output2String(value)}'.`);
+    createErrorObj(`Invalid assignment to ${name}`, `Unable to override primitive function '${name}' with value '${output2String(value)}'.`);
     return;
   }
   if (env.check(name)) {
@@ -307,7 +297,7 @@ function isSelfEvaluating(expr) {
 }
 
 function isTrue(expr) {
-  return expr !== '#f' && expr !== '#u' && expr !== 0;
+  return expr !== '#f' && expr !== '#u' && expr !== 0; // empty string is considered true?
 }
 
 function boolConvert(boo) {
@@ -429,7 +419,7 @@ function _lisk_draw(type, a1, a2, a3, a4, a5, a6, a7, a8, a9) { // isn't there a
   drawObj.dasharray = strokeProp[0];
   drawObj.linecap = strokeProp[1];
   drawPromise.then(x => x(drawObj));
-  // liskOutput.push(drawObj);
+  liskOutput.push(drawObj);
   return "#u";
 }
 const rad = deg => deg * Math.PI / 180;
@@ -528,7 +518,7 @@ proc["draw-text"] = function(content, x, y, style, fontSize = 20, color = '"#000
   };
   //console.log(drawObj);
   drawPromise.then(x => x(drawObj));
-  //liskOutput.push(drawObj);
+  liskOutput.push(drawObj);
   return "#u";
 };
 proc["draw-tex"] = function(content, x, y, fontSize) {
@@ -542,7 +532,7 @@ proc["draw-tex"] = function(content, x, y, fontSize) {
   };
   //console.log(drawObj);
   drawPromise.then(x => x(drawObj));
-  //liskOutput.push(drawObj);
+  liskOutput.push(drawObj);
   return "#u";
 };
 // moving SDL to proc[] (dangerous!)

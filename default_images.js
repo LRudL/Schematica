@@ -542,5 +542,26 @@ let exampleDiagrams = [
   (let ty (- y (y-of mid)))
   (// arrow (coord x y) (coord (+ x (fx tx ty)) (+ y (fy tx ty))))
   (lseg (coord (- x (fy tx ty)) (+ y (fx tx ty))) (coord (+ x (fy tx ty)) (- y (fx tx ty)))))
-(grid-apply df 25)`
+(grid-apply df 25)`,
+
+`(rect 0 0 canvas-width canvas-height (fill: "black"))
+(let p (coord (/ canvas-width 1.5) (/ canvas-height 1.5)))
+(let dir 45)
+(let step 0)
+(let steps (pow 2 12))
+(def (clr i)
+  (color-from-scale i "#ffff00" 0 "#00ffff" steps))
+(def (turn ang)
+  (set dir (+ dir ang)))
+(def (drawline l i)
+  (lseg p (set p (translate-coord p (* (cos dir) l) (* (sin dir) l)))
+    (stroke: (stroke-style (width: 2) (color: (clr i))))))
+(def (dragon n l sign)
+  (if (== n 0)
+    (drawline l (++! step))
+    (begin
+      (dragon (-- n) l 1)
+      (turn (* sign 90))
+      (dragon (-- n) l -1))))
+(dragon 12 10 1)`
 ]

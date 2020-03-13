@@ -233,7 +233,8 @@ let consoleHistory = ['help'], consoleHistoryIndex = 1;
 console_input.style.color = consoleInputColor;
 
 function deleteDrawItems() {
-  for (let i = 0; i < drawItems.length; i++) drawItems[i].remove();
+  while(drawItems.length)
+    drawItems.pop().remove();
 }
 
 function drawFromCommand(cmd) {
@@ -354,11 +355,11 @@ function tikzFromCommand(cmd) {
 }
 
 function toTikz() {
-  return "\\begin{tikzpicture} \n"
-    + "% This TikZ code was generated automatically by Schematica \n" // wooo advertising
-    + "% Visit https://lrudl.github.io/Schematica/ to try it \n"
+  return "\\begin{tikzpicture}\n"
+    + "% This TikZ code was generated automagically by Schematica\n" // wooo advertising
+    + "% Visit https://lrudl.github.io/Schematica/ to try it\n"
     + (liskOutput.filter(x => x.command == "draw")).map(tikzFromCommand).join("\n")
-    + "\n \\end{tikzpicture}";
+    + "\n\\end{tikzpicture}";
 }
 
 // Image saving functions (thanks StackOverflow):
@@ -470,7 +471,8 @@ function handleOutput(o, displayAll) {
       if (displayAll) {
         writeToConsole([printableObj(o[i])], consoleDrawColor);
       }
-      drawFromCommand(o[i]);
+      return; // moved to drawPromise.then()
+      // drawFromCommand(o[i]);
     } else if (displayAll) {
       writeToConsole(["Unknown output object:", printableObj(o[i])], consoleWarnColor);
     }
@@ -612,7 +614,6 @@ render_btn.onclick = function() {
   deleteDrawItems();
   // drawItems = drawFromCommandList(drawCommands(getProcessedCode()));
   resetGlobalEnv();
-  drawItems = [];
   /* ^ The weird jQuery stuff converts the tag-filled html code stored in libraryCode
       into what it would be if you did .innerText on a div containing the same. */
   if (!showingLibrary)
