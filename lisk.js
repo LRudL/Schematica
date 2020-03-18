@@ -622,6 +622,20 @@ validate = str => {
       case '"':
         createErrorObj('Syntax Error:', `Unmatched <mark>"</mark> on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
         return false;
+        break;
+      case ':':
+        let j = i - 1;
+        while(/\s/.test(str[j])) --j;
+        if(str[j] === undefined || str[j] == '(') {
+          createErrorObj('Syntax Error:', `<mark>:</mark> requires a valid argument name on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          return false;
+        }
+        j = i + 1;
+        while(/\s/.test(str[j])) ++j;
+        if(str[j] === undefined || str[j] == ')') {
+          createErrorObj('Syntax Error:', `<mark>:</mark> requires a valid argument value on line <span style="color:#0ff">${line}</span>, column <span style="color:#0ff">${column}</span>.`);
+          return false;
+        }
     }
     ++column;
   }
