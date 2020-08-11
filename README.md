@@ -40,8 +40,40 @@ You can try Schematica at https://lrudl.github.io/Schematica/
 - If an ellipse is rotated, the TikZ export of the diagram will not feature a rotated ellipse (TikZ export in general is not guaranteed to work).
 - Creating a line with its angle set to 0 results in an error being logged to the Lisk console (though the line does render properly).
 - A circle's point-at-angle function returns the point at the negative of the given angle (also other angle inversions, e.g. relating to circle tangents).
+- Nested quote expressions (e.g. `(let foo ''bar)`) causes undefined behavior.
+  - The expected behavior should be setting `foo` to the list `(quote bar)`, but no implementations follow this behavior.
 
 ## Version history
+
+### v0.4.2
+2020-02-29
+
+- Lisk
+  - Replaced `getPrimitiveProcedure()` with a `proc` object to store all primitive procedures.
+    - `eval` is now a hard-coded procedure within `liskEval()`.
+  - Simplified structure of procedures (both primitive and user-defined).
+  - Evaluator is at least 50% faster on average (tested on Chrome and Firefox).
+- SDL
+  - Replaced `def` macro and some procedures with hard-coded primitive function.
+- Documentation updated to clarify quote abbreviation syntax (`'`)
+- Fixes
+  - `string?` and `str-concat` now perform checks properly.
+  - Single quotes in quoted strings no longer cause false syntax errors.
+  - Malformed named args (e.g. `(x:)`) are caught as syntax errors.
+  - Restored error reporting when calling a function with invalid arguments.
+    - E.g. `(+ 1 (/ 0 0))` will log "Invalid argument type" due to adding a `NaN`.
+  - Functions can now be compared correctly.
+
+### v0.4.1
+2020-02-22
+
+- Interface
+  - Added command history in the interactive console; navigate with up/down arrows.
+  - Interactive console now uses a bigger font and smaller margin.
+  - Saves user code in the url on run.
+- Fixes
+  - Correctly loads MathJax boldsymbol extension
+  - Fixed degree vs radian inconsistencies
 
 ### v0.4.0
 
@@ -69,6 +101,27 @@ You can try Schematica at https://lrudl.github.io/Schematica/
     - Fixed the y-at-x function for lines.
     - Fixed line segment stroke style property not being applied to the rendered line segment.
     - Fixed some vector functions returning lists of values rather than vectors.
+
+### v0.3.2
+2020-01-02
+
+- Lisk
+  - Optimized parser.
+  - Refactored and optimized evaluator.
+- Libraries
+  - Removed JQuery.
+- Interface
+  - Interactive console now only has vertical scroll bar when needed.
+- Fixes
+  - Bracket matching is restored.
+
+### v0.3.1
+2019-12-30
+
+- Lisk
+  - Optimized parser.
+  - Syntax errors now give line and column number of the error.
+  - Quotes now support escaped quotes (" \\" " no longer errors).
 
 ### v0.3.0
 

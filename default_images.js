@@ -523,5 +523,45 @@ let exampleDiagrams = [
 
 (let intr (i 'intersect l))
 
-(circle (x-of intr) (y-of intr) 5 (fill: "green"))`
+(circle (x-of intr) (y-of intr) 5 (fill: "green"))`,
+
+`(def (grid-apply f int)
+  (for x 0 (< x canvas-width) (+ x int)
+       (for y 0 (< y canvas-height) (+ y int)
+            (f x y))))
+(let mid (coord (/ canvas-width 2) (/ canvas-height 2)))
+(lseg (coord 0 (y-of mid)) (coord canvas-height (y-of mid)))
+(tex "x" (coord (- canvas-height 30) (+ (y-of mid) 15)) 8)
+(lseg (coord (x-of mid) 0) (coord (x-of mid) canvas-width))
+(tex "y" (coord (- (x-of mid) 30) 15) 8)
+(tex "0" (coord (- (x-of mid) 30) (+ (y-of mid) 12)) 8)
+(def (fx x y) (* (sin x) 20))
+(def (fy x y) (* (cos y) 20))
+(def (df x y)
+  (let tx (- x (x-of mid)))
+  (let ty (- y (y-of mid)))
+  (// arrow (coord x y) (coord (+ x (fx tx ty)) (+ y (fy tx ty))))
+  (lseg (coord (- x (fy tx ty)) (+ y (fx tx ty))) (coord (+ x (fy tx ty)) (- y (fx tx ty)))))
+(grid-apply df 25)`,
+
+`(rect 0 0 canvas-width canvas-height (fill: "black"))
+(let p (coord (/ canvas-width 1.5) (/ canvas-height 1.5)))
+(let dir 45)
+(let step 0)
+(let steps (pow 2 12))
+(def (clr i)
+  (color-from-scale i "#ffff00" 0 "#00ffff" steps))
+(def (turn ang)
+  (set dir (+ dir ang)))
+(def (drawline l i)
+  (lseg p (set p (translate-coord p (* (cos dir) l) (* (sin dir) l)))
+    (stroke: (stroke-style (width: 2) (color: (clr i))))))
+(def (dragon n l sign)
+  (if (== n 0)
+    (drawline l (++! step))
+    (begin
+      (dragon (-- n) l 1)
+      (turn (* sign 90))
+      (dragon (-- n) l -1))))
+(dragon 12 10 1)`
 ]

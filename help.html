@@ -1,7 +1,8 @@
-  <!DOCTYPE html>
-  <html>
-  <head>
-  <meta charset="utf-8"/>
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
   <title>Manual</title>
   <style>
     body {
@@ -13,1285 +14,1269 @@
     }
     #contents {
       position: absolute;
-      top: 0px;
-      left: 25%;
-      width: 50%;
+      top: 0;
+      left: 15%;
+      width: 70%;
       background-color: white;
       color: black;
       padding: 20px;
+      box-sizing: border-box;
+    }
+    @media (max-width: 1000px) {
+      #contents {
+        left: 2%;
+        width: 96%;
+        padding: 3%;
+      }
     }
   </style>
-  </head>
-
-  <body>
-    <div id="contents">
-      <center><h1 id="title">Schematica <br>Manual</h1></center>
-
-      <h1>What is Schematica?</h1>
-
-      <p>Schematica is a tool for creating diagrams and other images. Schematica aims to require a minimum of specification from the user –&nbsp;by default, Schematica uses its own discretion to decide where to place elements, in accordance with user requirements. Schematica also aims for a maximum of precision and flexibility by allowing the user to write instructions that specify the image, rather than having to fiddle around with a user interface.</p>
-
-      <h2>What is Lisk?</h2>
-
-      <p>Lisk is the programming language in which Schematica users write their code. The name is an abbreviation of &quot;List Sketcher&quot;, a nod to the programming language Lisp (&quot;List Processor&quot;) which Lisk borrows heavily from (in fact, Lisk is practically a dialect of Lisp rather than its own language).</p>
-
-      <h1>Syntax</h1>
-
-      <p>Though the syntax may look strange at first, there&#39;s a reason for it: it really is the simplest and most flexible syntax possible.</p>
-
-      <p>There are only three syntax or &quot;grammar&quot; rules that you need to understand how to read and write instructions in Schematica:</p>
-
-      <ul>
-      	<li>A self-evaluating expression –&nbsp;that is, numbers, strings, true, false, and undefined –&nbsp;evaluates to itself.</li>
-      	<li>A variable evaluates to the value it stands for.</li>
-      	<li>If an expression is in parentheses, the first item in parentheses is the function that is to be applied to the rest of the parenthesised elements. For instance, <code>+</code> is the addition function, so <code>(+ 1 2 3)</code> evaluates to <code>6</code>.
-
-      		<ul>
-      			<li>Many Schematica functions can take a lot of arguments, almost all of which are optional. Hence, to simplify function calls, arguments can also be passed by name (in any order) as follows: <code>(circle (radius: 3) (color: yellow))</code>. (The only exception are some built-in functions)</li>
-      		</ul></li>
-      </ul>
-
-      <p>In addition, there is a rule for how many instructions in a row are to be interpreted:</p>
-
-      <ul>
-      	<li>Evaluate each instruction in order, and return the value of the last.</li>
-      </ul>
-
-      <p>This eliminates the need for a “return” statement like the one many programming languages are encumbered with.</p>
-
-      <h2>Spacing, indentation &amp; line breaks</h2>
-
-      <p>One of the many beauties of Lisp-style syntax (in addition to many curvy parentheses) is that no semicolons or other statement breaks are required to separate statements, and whitespace does not need to be given any specific importance.</p>
-
-      <p>Thus, though it is possible to write out your entire program in one line, feel free to add spaces, line breaks, and indentation wherever and however you wish to make things easier to read.</p>
-
-      <p>(The most minimal whitespace requirement can be stated like this: if there’s at least one whitespace character between every pair of adjacent symbols that is not separated by an opening or a closing parentheses, you’re fine. Or, more briefly: don’t worry about whitespace.)</p>
-
-      <h2>Types</h2>
-
-      <ul>
-      	<li>Numbers</li>
-      	<li>Strings</li>
-      	<li>Lists</li>
-      	<li>Functions</li>
-      	<li>Special values
-
-      		<ul>
-      			<li><code>#t</code> -&gt; “true”</li>
-      			<li><code>#f</code> -&gt; “false”</li>
-      			<li><code>#u</code> -&gt; “undefined”. If a function is called without all of its arguments being specified, the unspecified arguments are set to <code>#u</code>. Also returned in some other cases.</li>
-      		</ul></li>
-      </ul>
-
-      <h1>Built-in functions and primitives</h1>
-
-      <p>This section lists all functions built into the Lisk language (the default functions listed in the next section are also available to the user; as a user, the only difference you have to care about is that built-in functions do not take named arguments).</p>
-
-      <h2>Primitives</h2>
-
-      <ul>
-      	<li><code>(let variableName value)</code>
-
-      		<ul>
-      			<li>A variable with the name <code>variableName</code> will now be set to <code>value</code></li>
-      			<li><code>let</code> can be used to both modify existing variables as well as define new ones.</li>
-      			<li>If a previously undefined variable is defined inside a function, it is only available inside that function.</li>
-      			<li>Variable names can include any character except “(“, “)”, and “:”.</li>
-      			<li><strong>Example</strong>:
-
-      				<ul>
-      					<li><code>(let x 42)</code> -&gt; sets <code>x</code> to 42</li>
-      				</ul></li>
-      		</ul></li>
-      	<li> <code>(quote expr)</code>
-
-      		<ul>
-      			<li>Returns <code>expr</code>, without evaluating it (that is, if <code>var</code> is a variable, <code>(quote var)</code> returns the symbol <code>var</code> rather than the value of <code>var</code>).</li>
-      			<li>Most useful for defining lists: note that running <code>(1 2 3)</code> will result in Schematica trying to apply the function <code>1</code> to the arguments 2 and 3; to create the list <code>[ 1 2 3 ]</code>, instead use <code>(quote (1 2 3))</code>.</li>
-      			<li>The abbreviation <code>&#39;var</code> is equivalent to <code>(quote var)</code>.</li>
-      			<li><strong>Example:</strong>
-
-      				<ul>
-      					<li><code>&#39;(1 (2 3) 4)</code> -&gt; returns a list with the elements 1, the list of 2 and 3, and 4.</li>
-      				</ul></li>
-      		</ul></li>
-      	<li><code>(if predicate consequent alternative)</code>
-
-      		<ul>
-      			<li>If the value of <code>predicate</code> is true, <code>consequent</code> is evaluated; if <code>predicate</code> is false, <code>alternative</code> is evaluated.</li>
-      			<li><strong>Example:</strong>
-
-      				<ul>
-      					<li><code>(if (&gt; x 2) x &quot;&lt;3&quot;)</code> -&gt; if the variable <code>x</code> is greater than 2, <code>x</code> is returned; otherwise, the string “&lt;3” is returned.</li>
-      				</ul></li>
-      		</ul></li>
-      	<li><code>(for loopVar startVal endCondition nextExpr loopExpr)</code>
-
-      		<ul>
-      			<li><code>loopVar</code> is the name used for the loop variable.</li>
-      			<li><code>startVal</code> is the first value of the loop variable.</li>
-      			<li><code>endCondition</code> is a boolean statement. The loop will continue until this expression evaluates to false (a limit for the number of times a loop can loop is set in the code, but don’t rely on this).</li>
-      			<li><code>nextExpr</code> is evaluated after each time <code>loopExpr</code> is evaluated to obtain the new value of the loop variable.</li>
-      			<li><code>loopExpr</code> is any expression; it will be performed however many times the loop runs, in an environment where the loop variable takes successive values based on <code>nextExpr</code>.</li>
-      			<li><strong>Example:</strong>
-
-      				<pre><code>(for i 0 (&lt; i 10) (++ i)
-      				      (print i))
-      				</code></pre>
-
-      				<ul>
-      					<li>This will print the numbers from 0 to 9 inclusive.</li>
-      				</ul></li>
-      			<li><strong>Note:</strong>
-
-      				<ul>
-      					<li>Lisk is, or at least tries to be, a mostly functional-style language, which means the language is designed to generally make recursion easy and hence reduce the need for any sort of loops. However, the Lisk interpreter that Schematica uses does not optimise tail recursion, which means that performing loops through recursion takes up more and more memory the longer the loop is. Due to the limitations of Javascript stack size and the inefficiencies of the Lisk interpreter, this sets a fairly hard and low upper limit on recursion-based looping, which is why Lisk implements a for-loop primitive.</li>
-      					<li>The upside of this is that users without prior exposure to functional programming will (at least initially) likely find thinking in for-loop based iteration easier than thinking in terms of recursion-based iterative functions. </li>
-      					<li>(To really experience the joys of Lisk, a functional approach is recommended where possible.)</li>
-      				</ul></li>
-      		</ul></li>
-      	<li><code>(// a sample comment)</code>
-
-      		<ul>
-      			<li>Anything else in a parenthesised expression starting with <code>//</code> will be ignored. This can be used to add comments to code.</li>
-      		</ul></li>
-      </ul>
-
-      <h3>Functions</h3>
-
-      <p>We have seen how variables can be defined with <code>let</code>. Functions in Lisk are just another type of variable, though with a special form. As an example, consider the definition:</p>
-
-      <pre><code>(let f (! (x y) (+ (* x x) (* y y))))
-      </code></pre>
-
-      <p>For clarity, we can add some indentation and line breaks:</p>
-
-      <pre><code>(let f (! (x y)
-        (+ (* x x)
-           (* y y))))
-      </code></pre>
-
-      <p>This statement can be read as: “Let <code>f</code> be a function on the arguments <code>x</code> and <code>y</code> that returns the sum of <code>x</code> squared and <code>y</code> squared.</p>
-
-      <p>The form of a function expression is:<code>(! list-of-arguments body-expression-1 body-expression 2 ... body-expression-n)</code>. All body expressions are evaluated, and the value of the last is returned as the value of the function (this does not matter if the value of the function is not used by anything).</p>
-
-      <p>(The keyword <code>lambda</code> can be used instead of <code>!</code>. The word “lambda” is used in many Lisp-family languages for historical reasons.)</p>
-
-      <p>You do not need to define a function to use it. For instance,</p>
-
-      <pre><code>( (! (x) (* 2 x))    2)
-      </code></pre>
-
-      <p>returns 4, just as if you had separately defined a doubling function as <code>(let double (! (x) (* 2 x)))</code> and then called <code>(double 2)</code>. </p>
-
-      <p>For functions of one variable, a shortcut notation is available; you do not need to have a list of arguments, but can instead write, for example, <code>(let double (! x (* 2 x)))</code>.</p>
-
-      <p>The <code>def</code> macro makes function definitions a bit more convenient to write and is made available by the SDL; see below for details.</p>
-
-      <p>Since functions are just a type of variable, functions can return functions, as well as take functions as arguments:</p>
-
-      <pre><code>(let composite (! (f g)
-        (! (x) (f (g x)))))
-      (let f (! (x) (* 2 x)))
-      (let g (! (x) (+ 1 x)))
-      (let f-of-g (composite f g))
-      (print (f-o-g 3))
-      </code></pre>
-
-      <p>The above example would compute (3 + 1) * 2 and hence print 8 to the console.</p>
-
-      <h4>Function functions &amp; representation</h4>
-
-      <p><code>(function? x)</code> tests whether <code>x</code> is a function.</p>
-
-      <p>If a function is logged to the console, you will see a list, the first element of which is either <code>primitive</code> (if the function is a built-in primitive function) or <code>function</code>, if the function was defined by the user or by the default Schematica library.</p>
-
-      <p>(If you wish to test whether <code>func</code> is a primitive function, use something like this: <code>(= (first func) ´primitive)</code> - this “hack” currently works because of the way functions are internally represented, but might change in the future.)</p>
-
-      <h4>Closures</h4>
-
-      <p>Lisk supports closures.</p>
-
-      <h2>Logic functions</h2>
-
-      <ul>
-      	<li><code>(not x)</code>
-
-      		<ul>
-      			<li>If <code>x</code> “is true” (that is, <code>x</code> is not <code>#f</code> (false), <code>#u</code> (undefined), or zero, returns <code>#f</code>. Otherwise returns <code>#t</code>.</li>
-      		</ul></li>
-      	<li><code>(and b1 b2 b3 ... )</code>
-
-      		<ul>
-      			<li>Returns <code>#t</code> if all arguments are true, <code>#f</code> otherwise.</li>
-      		</ul></li>
-      	<li><code>(or b1 b2 b3 ... )</code>
-
-      		<ul>
-      			<li>Returns <code>#t</code> if at least one argument is true, <code>#f</code> otherwise.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Equality Functions</h2>
-
-      <ul>
-      	<li><code>(= x1 x2 x3 ... )</code>
-
-      		<ul>
-      			<li>Returns <code>#t</code> (true) if all arguments are equal, <code>#f</code> otherwise.</li>
-      			<li>To avoid problems with Javascript’s floating-point precision (things like 0.2 + 0.1 being 0.30000000000000004), numbers will be considered equal if they are very close to each other (within 1 x 10^-10).</li>
-      		</ul></li>
-      	<li><code>(== x1 x2 x3 ...)</code>
-
-      		<ul>
-      			<li>The same as above, except numbers are considered equal only if they are exactly the same, any floating-point imprecision included.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Mathematical functions</h2>
-
-      <p>These are self-explanatory, except for two notes:</p>
-
-      <ul>
-      	<li>Note that prefix order means things are a bit different and can look weird: <code>(+ 2 (* 3 2))</code> instead of <code>2 + 3 * 2</code>, and so on.</li>
-      	<li>Where it makes sense, a function can take multiple arguments (this is one of the strengths of prefix notation). For instance, <code>(+ a1 a2 a3 a4)</code> sums up four values; <code>(&gt; p q1 q2 q3 q4)</code> tests whether <code>p</code> is greater than all the other arguments.</li>
-      </ul>
-
-      <p>For equality functions, see the above section.</p>
-
-      <ul>
-      	<li><code>(number? n)</code></li>
-      	<li><code>(integer? n)</code></li>
-      	<li><code>(&gt; a b1 b2 b3 ...)</code>
-
-      		<ul>
-      			<li>Returns true (<code>#t</code>) if <code>a</code> is greater than all the b-variables; false (<code>#f</code>) otherwise.</li>
-      		</ul></li>
-      	<li><code>(&lt; a b1 b2 b3 ...)</code>
-
-      		<ul>
-      			<li>Less-than; analogous to the above.</li>
-      		</ul></li>
-      	<li><code>(+ a1 a2 a3 ...)</code></li>
-      	<li><code>(- n s1 s2 s3 ...)</code></li>
-      	<li><code>(/ n d1 d2 d3 ...)</code></li>
-      	<li><code>(* a1 a2 a3 ...)</code></li>
-      	<li><code>(mod x y)</code>
-
-      		<ul>
-      			<li>Returns remainder of the division x/y (<code>(mod 8 5)</code> returns 3).</li>
-      		</ul></li>
-      	<li><code>(exp n)</code>
-
-      		<ul>
-      			<li>Returns e to the power of <code>n</code>.</li>
-      		</ul></li>
-      	<li><code>(pow x y)</code>
-
-      		<ul>
-      			<li>Returns <code>x</code> to the power of <code>y</code></li>
-      		</ul></li>
-      	<li><code>(ln n)</code> (equivalent to <code>(log n)</code>)
-
-      		<ul>
-      			<li>Returns the natural logarithm of <code>n</code>.</li>
-      		</ul></li>
-      	<li>Trigonometric functions:
-
-      		<ul>
-      			<li>Of the form <code>(cos angle-in-radians)</code></li>
-      			<li>Available functions: <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code></li>
-      		</ul></li>
-      	<li><code>(min n1 n2 n3 ...)</code>
-
-      		<ul>
-      			<li>Returns the smallest of any numerical arguments passed to it.</li>
-      		</ul></li>
-      	<li><code>(max n1 n2 n3 ...)</code>
-
-      		<ul>
-      			<li>Returns the largest of any numerical arguments passed to it.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>List functions</h2>
-
-      <ul>
-      	<li><code>(list? var)</code>
-
-      		<ul>
-      			<li>Returns true if <code>var</code> is a list, returns false otherwise.</li>
-      		</ul></li>
-      	<li><code>(list el1 el2 el3 ...)</code>
-
-      		<ul>
-      			<li>Returns a list consisting of all arguments passed to the list.</li>
-      		</ul></li>
-      	<li><code>(length lst)</code>
-
-      		<ul>
-      			<li>Returns the number of elements in list <code>lst</code>.</li>
-      		</ul></li>
-      	<li><code>(nth lst n)</code>
-
-      		<ul>
-      			<li>Returns the nth item in <code>lst</code>.</li>
-      			<li>Note that lists are zero-indexed (that is, the first character is at position 0, not 1).</li>
-      		</ul></li>
-      	<li><code>(set-nth lst n val)</code>
-
-      		<ul>
-      			<li>Sets the nth item in <code>lst</code> to <code>val</code> and returns the new list.</li>
-      		</ul></li>
-      	<li><code>(first lst)</code>
-
-      		<ul>
-      			<li>Returns the first item in <code>lst</code>.</li>
-      			<li>To maintain continuity with Lisp, this function is also available with the name <code>car</code>.</li>
-      		</ul></li>
-      	<li><code>(rest lst)</code>
-
-      		<ul>
-      			<li>Returns <code>lst</code>, except without the first item.</li>
-      			<li>To maintain continuity with Lisp, this function is also available with the name <code>cdr</code>.</li>
-      		</ul></li>
-      	<li><code>(concat list1 list2 list3 ...)</code>
-
-      		<ul>
-      			<li>Returns the list you get when you merge all the lists supplied as arguments to <code>concat</code>.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>String functions</h2>
-
-      <ul>
-      	<li><code>(string? str)</code>
-
-      		<ul>
-      			<li>Returns true if <code>str</code> is a string, false otherwise.</li>
-      		</ul></li>
-      	<li><code>(str-concat str1 str2 str3 ...)</code>
-
-      		<ul>
-      			<li>Returns the concatenation of all strings passed as arguments.</li>
-      		</ul></li>
-      	<li><code>(str-slice str start end)</code>
-
-      		<ul>
-      			<li>Returns a segment of the string <code>str</code> that begins from the position <code>start</code> and extends up to (but not including) the character at position <code>end</code>.</li>
-      			<li>Note that strings are zero-indexed (that is, the first character is at position 0, not 1).</li>
-      			<li>If the third argument is not passed, <code>end</code> is set to the length of the string.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Logging functions</h2>
-
-      <ul>
-      	<li><code>(print val)</code>
-
-      		<ul>
-      			<li>Prints <code>val</code> to the Schematica console. Returns <code>val</code>.</li>
-      		</ul></li>
-      	<li><code>(cprint text)</code>.
-
-      		<ul>
-      			<li>Prints <code>val</code> to the browser’s Javascript console (used for debugging purposes), and returns <code>val</code>.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Drawing functions</h2>
-
-      <p>All primitive draw operations are performed by the <code>draw</code> function. Users are advised, in most cases, to use the more advanced drawing functions provided in the Schematica library; this function is mainly meant to be used internally.</p>
-
-      <p>The draw function returns <code>#u</code>.</p>
-
-      <p>All colours are specified using standard hexadecimal format: a string of the form “#rrggbb”.</p>
-
-      <ul>
-      	<li><code>(draw type a1 a2 a3 a4 a5 a6 a7)</code>
-
-      		<ul>
-      			<li><code>type</code> must be one of:
-
-      				<ul>
-      					<li>“lseg” (line segmenet)</li>
-      					<li>“circle”</li>
-      				</ul></li>
-      			<li>The meaning of the seven other variables depends on the type:
-
-      				<ul>
-      					<li>Type is “lseg”
-
-      						<ul>
-      							<li><code>a1</code> and <code>a2</code> are the x- and y-coordinates, respectively, of the starting point of the line segment.</li>
-      							<li><code>a3</code> and <code>a4</code> are the x- and y-coordinates of the ending point.</li>
-      							<li><code>a5</code> is the colour of the line
-
-      								<ul>
-      									<li>Default: “#000000” (black)</li>
-      								</ul></li>
-      							<li><code>a6</code> is the thickness of the line
-
-      								<ul>
-      									<li>Default: 1</li>
-      								</ul></li>
-      						</ul></li>
-      					<li>Type is “circle”
-
-      						<ul>
-      							<li><code>a1</code> and <code>a2</code> are the x- and y-coordinates of the centre of the circle.</li>
-      							<li><code>a3</code> is the radius.</li>
-      							<li><code>a4</code> is the fill colour.
-
-      								<ul>
-      									<li>Default: “none” (no fill)</li>
-      								</ul></li>
-      							<li><code>a5</code> is the thickness of the circcle’s outline.
-
-      								<ul>
-      									<li>Default: 1.</li>
-      								</ul></li>
-      							<li><code>a6</code> is the colour of the circle’s outline.
-
-      								<ul>
-      									<li>Default: “#000000” (black)</li>
-      								</ul></li>
-      						</ul></li>
-      					<li>Type is “ellipse”
-
-      						<ul>
-      							<li><code>a1</code> and <code>a2</code> are the x- and y-coordinates of the centre of the ellipse.</li>
-      							<li><code>a3</code> and <code>a4</code> are the radius along the x-direction and the radius along the y-direction of the ellipse.</li>
-      							<li><code>a5</code> is the angle at which the ellipse is rotated.</li>
-      							<li><code>a6</code> is the fill colour.</li>
-      							<li><code>a7</code> is the outline’s thickness.</li>
-      							<li><code>a8</code> is the outline’s colour.</li>
-      						</ul></li>
-      					<li>Type is “polygon”
-
-      						<ul>
-      							<li><code>a1</code> is a list of coordinates, where each coordinate is a list consisting of an x- and y-value.</li>
-      							<li><code>a2</code> is the fill colour.</li>
-      							<li><code>a3</code> is the outline’s thickness.</li>
-      							<li><code>a4</code> is the outline’s colour.</li>
-      						</ul></li>
-      				</ul></li>
-      		</ul></li>
-      	<li><code>(draw-text content x y style fontSize color fontFamily)</code>
-
-      		<ul>
-      			<li><code>content</code> is a string containing the text to draw.</li>
-      			<li>The text is positioned at coordinate <code>(x, y)</code>.</li>
-      			<li><code>style</code> is a string. The space-separated words “italic”, “bold”, “underline”, and “strikethrough” are picked out (if present), and used to style the text. “Strikethrough” and “underline” are mutually exclusive (for reasons not related to Schematica). The default value is the empty string.</li>
-      			<li><code>fontSize</code> defaults to 20.</li>
-      			<li><code>color</code> is a string corresponding to a color - either a word like “red”, or a hexadecimal color string like “#ff0000”.</li>
-      			<li><code>fontFamily</code> is a string that specifies the font to use. I’d tell you which fonts work, but I honestly have no clue. Defaults to Baskerville.</li>
-      		</ul></li>
-      	<li><code>(draw-tex content x y fontSize)</code>
-
-      		<ul>
-      			<li>Same as <code>draw-tex</code>, but instead of rendering plain text, it uses the MathJax library to process <code>content</code> as LaTeX and (potentially) output beautiful equations. See a LaTeX reference for how to write equations in LaTeX.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Evaluation functions</h2>
-
-      <ul>
-      	<li><code>(eval lst)</code>
-
-      		<ul>
-      			<li>Evaluates the expression <code>lst</code> in the Lisk evaluator’s global environment.</li>
-      		</ul></li>
-      	<li><code>(js-eval expression-str)</code>
-
-      		<ul>
-      			<li>Interprets <code>expression-str</code> as Javascript by calling Javascript’s built-in <code>eval</code> function on it.</li>
-      			<li>Use at your own risk. </li>
-      		</ul></li>
-      </ul>
-
-      <h2>Other</h2>
-
-      <ul>
-      	<li><code>(debug expr1 expr2 expr3 ... )</code>
-
-      		<ul>
-      			<li>Prints the value of all expressions passed as arguments.</li>
-      			<li>Logs the environment object and a list of variables and their values in the current environment frame to the browser’s javascript console.</li>
-      		</ul></li>
-      </ul>
-
-      <h2>Macros</h2>
-
-      <p>Macros can be used to automatically change syntax of a certain form into syntax of a different form.</p>
-
-      <p>Macros are defined with an expression of the following type:</p>
-
-      <pre><code>(macro (macro-name &lt;syntax-form&gt;) &lt;code&gt;)
-      </code></pre>
-
-      <p>After such a macro is defined anywhere in the code, whenever <code>macro-name</code> occurs at the beginning of an expression, the code defined in <code>&lt;code&gt;</code> will run instead.</p>
-
-      <p>Symbols starting with a “#” in <code>&lt;syntax-form&gt;</code> will be bound to values based on the macro expression, and any symbols starting with a “#” in <code>&lt;code&gt;</code> will be replaced with the corresponding value.</p>
-
-      <p>For example, say we have this macro:</p>
-
-      <pre><code>(macro (set-var (#variable #value) if #set?)
-          (if #set?
-              (set #variable #value)))
-      </code></pre>
-
-      <p>Now say we evaluate this expression:</p>
-
-      <pre><code>(set-var (x 0) if (&lt; x 3))
-      </code></pre>
-
-      <p>The macro parser will compare this expression to our macro expression definition (<code>(set-var (#variable #value) if #set?)</code>), deduce that <code>x</code> corresponds to <code>#variable</code>, <code>0</code> corresponds to <code>#value</code>, and <code>(&lt; x 3)</code> corresponds to <code>#set?</code>, and, instead of trying to call a function called <code>set-var</code>, it will evaluate the following:</p>
-
-      <pre><code>(if (&lt; x 3)
-          (set x 0))
-      </code></pre>
-
-      <p>Thus, macros allow you to effectively change the language as you need it.</p>
-
-      <h3>Advanced macro features</h3>
-
-      <p>If a macro slot variable ends in “..”, instead of being bound to the corresponding expression in the macro definition, the variable will be bound to a list containing every expression in its position and after. For example, the <code>def</code> macro in the SDL is defined as follows:</p>
-
-      <pre><code>(macro (def (#name #args..) #body..)
-        (eval (list &#39;let &#39;#name (concat (list &#39;! &#39;#args..)
-              &#39;#body..))))
-      </code></pre>
-
-      <p>If we now evaluate:</p>
-
-      <pre><code>(def (f x y)
-          (print x)
-          (+ x y))
-      </code></pre>
-
-      <p>what will happen is that <code>#args..</code> will be bound to the list <code>(x y)</code>, and <code>#body..</code> to the list containing both body expressions.</p>
-
-      <p>Note that the expression that the macro evaluates to makes use of the <code>eval</code> function. Thus, when the macro is evaluated, the interpreter will evaluate the result of applying <code>eval</code> to the arguments. The <code>eval</code> call generates the following list:</p>
-
-      <pre><code>(let f (! x y)
-              (print x)
-              (+ x y))
-      </code></pre>
-
-      <p>The output of the <code>eval</code> call is what is evaluated by the interpreter. This technique is useful for constructing more advanced macros.</p>
-
-      <h1>Schematica library</h1>
-
-      <h2>Default variables</h2>
-
-      <ul>
-      	<li><code>#T</code> and <code>true</code> are set to <code>#t</code> (the truth-value in Lisk); <code>#F</code> and <code>#f</code> are set to <code>#f</code>. Use whichever you want as your boolean variables.</li>
-      	<li><code>pi</code> (3.14159…)</li>
-      	<li><code>pi/2</code> (half of pi; that is, a right angle)</li>
-      	<li><code>tau</code> (twice pi; a 360-degree angle)</li>
-      	<li><code>e</code> (2.71828…)</li>
-      	<li><code>canvas-width</code> (in pixels)</li>
-      	<li><code>canvas-height</code> (in pixels)</li>
-      	<li><code>canvas-scale</code> (the smaller of the two above variables)</li>
-      	<li><code>canvas-corners</code> (a list of four coordinates (each a <code>coord</code>) at the corners of the canvas, in clockwise order starting from top-left)</li>
-      	<li><code>bound-lines</code> (a list of four lines (each a <code>line</code>) that run along the borders of the canvas)</li>
-      </ul>
-
-      <h2>Macros</h2>
-
-      <ul>
-      	<li><code>(def (function-name arg1 arg2 arg3 ...) body)</code>
-
-      		<ul>
-      			<li>A more convenient way to define functions.</li>
-      			<li>Example usage: <code>(def (square x) (* x x))</code>; equivalent to <code>(let square (! (x) (* x x)))</code>.</li>
-      		</ul></li>
-      	<li><code>(rep variable default)</code>
-
-      		<ul>
-      			<li>If <code>variable</code> is <code>#u</code> (undefined), <code>variable</code> will be set to the value of <code>default</code>.</li>
-      		</ul></li>
-      	<li><code>(group group-name prop1 prop2 prop3 ... )</code>
-
-      		<ul>
-      			<li>It is often useful to collect a bunch of things under one name. The <code>group</code> macro implements a simple form of this type of object-orientedness.</li>
-      			<li><strong>Example:</strong>
-
-      				<ul>
-      					<li><code>(group stroke-style width (color &quot;black&quot;))</code></li>
-      					<li>Once the above has been defined, we can write <code>(let ss (stroke-style 4 &quot;red&quot;))</code> to obtain a function <code>ss</code>, which works in such a way that if we now call it with some symbol as an argument (<code>(ss &#39;width)</code>, for example), it will return the value associated with that symbol (4, in this case).</li>
-      					<li>The property <code>color</code> is given a default value <code>“black”</code> in the above; if we omit the second argument specifying the color, <code>(ss &#39;color)</code> will return <code>&quot;black&quot;</code>.</li>
-      				</ul></li>
-      			<li><strong>Notes:</strong>
-
-      				<ul>
-      					<li>The macro expands a <code>group</code> definition into a function that takes arguments, and returns a dispatch function that spits back those arguments when called with their names later on.</li>
-      					<li>Hence <code>group</code> is just a normal function, and can be called with unordered but named function parameters just like any other non-primitive function: <code>(group (color: &quot;red&quot;) (width: 4))</code>, for example.</li>
-      				</ul></li>
-      		</ul></li>
-      </ul>
-
-      <h2>Helper functions</h2>
-
-      <h3>Printing</h3>
-
-      <ul>
-      	<li><code>(prints expr1 expr2 expr3 ... )</code>
-
-      		<ul>
-      			<li>Prints any number of statements (each on a separate line).</li>
-      		</ul></li>
-      </ul>
-
-      <h3>Mathematical</h3>
-
-      <ul>
-      	<li><code>(ng x)</code>
-
-      		<ul>
-      			<li>Returns negative <code>x</code>.</li>
-      			<li>A minor disadvantage of Lisp-style syntax is that you can’t just add a minus-sign to a variable to get the negative (negative numbers will parse correctly, though).</li>
-      		</ul></li>
-      	<li><code>(++ x)</code> / <code>(-- x)</code>
-
-      		<ul>
-      			<li>Returns one more / one less than <code>x</code>.</li>
-      			<li>Note: will not change the value of <code>x</code>! Use <code>++!</code> and <code>--!</code> for this instead.</li>
-      		</ul></li>
-      	<li><code>(++! x)</code> / <code>(--! x)</code>
-
-      		<ul>
-      			<li>Sets the value of <code>x</code> to one more / one less than <code>x</code>.</li>
-      			<li><strong>Note:</strong> Due to the details of how environment modelling and variable assignment works in the Lisk interpreter, it is impossible for a function to take in a variable, and change the value of that variable outside of its scope. This is because environments are maintained in a stack (the environment of the current scope, the enclosing environment, and so on, until the global environment is reached). If a variable <code>x</code> is changed inside a function, the interpreter finds the first environment in this stack in which <code>x</code> is defined, and updates <code>x</code>s value in that environment - without affecting any other <code>x</code>s in the enclosing environments! Hence <code>++!</code> and <code>--!</code> are implemented in the SDL as macros, not functions.</li>
-      		</ul></li>
-      	<li><code>(deg angle)</code> / <code>(rad angle)</code>
-
-      		<ul>
-      			<li>Convert between radians and degrees.</li>
-      		</ul></li>
-      	<li><code>(average n1 n2 n3 ...)</code> / <code>(average lst)</code>
-
-      		<ul>
-      			<li>If the first argument is a list: returns the average of all values in the list.</li>
-      			<li>Otherwise: returns the average of all arguments passed to the function. </li>
-      		</ul></li>
-      </ul>
-
-      <h3>List processing</h3>
-
-      <ul>
-      	<li><code>(append lst el)</code>
-
-      		<ul>
-      			<li>Returns the list you get when you add <code>el</code> to the end of the list <code>l</code>.</li>
-      		</ul></li>
-      	<li><code>(last l)</code>
-
-      		<ul>
-      			<li>Returns the last element in the list <code>l</code>.</li>
-      		</ul></li>
-      	<li><code>caar</code> / <code>cadr</code> / <code>cdar</code> / <code>cddr</code>
-
-      		<ul>
-      			<li>Lisp-style list access functions. </li>
-      			<li>Note: <code>car</code> and <code>cdr</code> are just alternative names for the <code>first</code> and <code>rest</code> functions, which return the first element and all but the first element, respectively, of a list.</li>
-      			<li><code>(caar x)</code> is equivalent to <code>(car (car x))</code>, <code>(cdar x)</code> to <code>(cdr (car x))</code>, and so on.</li>
-      		</ul></li>
-      	<li><code>(filter op l)</code>
-
-      		<ul>
-      			<li>Returns a list containing each element of list <code>l</code>, except those for which the function <code>op</code>, when applied to an element, returns <code>#f</code> (false).</li>
-      			<li>Example: <code>(filter (! x (&lt; x 10)) &#39;(1 7 10 13 2))</code> returns the list <code>(1 7 2)</code>.</li>
-      		</ul></li>
-      	<li><code>(map op l)</code>
-
-      		<ul>
-      			<li>“Maps” the function <code>op</code> onto the list <code>l</code></li>
-      			<li>That is: returns the list you get when you replace each element <code>el</code> in list <code>l</code> with <code>(op el)</code>.</li>
-      			<li>Example: <code>(map (! x (* x x)) &#39;(1 2 3))</code> returns the list <code>(1 4 9)</code>.</li>
-      		</ul></li>
-      	<li><code>(accumulate l op val)</code>
-
-      		<ul>
-      			<li>“Accumulates” the list by merging successive elements with the function <code>op</code> (starting at <code>val</code>).</li>
-      			<li>Example: <code>(accumulate l + 0)</code> returns the sum of the elements in the list <code>l</code>.</li>
-      		</ul></li>
-      	<li><code>(list-merge a b op)</code>
-
-      		<ul>
-      			<li>Returns the list you get when every element in list <code>a</code> is replaced with the element you get by applying the function <code>op</code> to the element in <code>a</code> and the corresponding element in <code>b</code>.</li>
-      			<li>Example: <code>(list-merge &#39;(1 2 3) &#39;(3 2 1) *)</code> returns the list <code>(3 4 3)</code>.</li>
-      		</ul></li>
-      	<li><code>(pair-adjacents l)</code>
-
-      		<ul>
-      			<li>Returns a list consisting of every adjacent pair of elements in list <code>l</code>.</li>
-      			<li>Example: <code>(pair-adjacents &#39;(1 2 3 4))</code> returns the list <code>((1 2) (2 3) (3 4))</code>.</li>
-      			<li>(This is used by the SDL to calculate the <code>bound-lines</code> list from <code>corner-points</code>; other uses may be few and far between)</li>
-      		</ul></li>
-      </ul>
-
-      <h3>Functions</h3>
-
-      <ul>
-      	<li><code>(composite fn-list)</code>
-
-      		<ul>
-      			<li>Returns a function that is equivalent to successive application of all functions in the list <code>fn-list</code>.</li>
-      		</ul></li>
-      </ul>
-
-      <h3>Colors</h3>
-
-      <ul>
-      	<li><code>(list-col-&gt;hex lst)</code>
-
-      		<ul>
-      			<li>Returns the hexadecimal color code representing the balance of colors in <code>lst</code>, a list of three numbers: red, green, and blue amounts, each between 0 and 255 inclusive.</li>
-      		</ul></li>
-      	<li><code>(hex-col-&gt;list hex)</code>
-
-      		<ul>
-      			<li>Inverse of the above: converts hexadecimal color codes into lists of color components.</li>
-      		</ul></li>
-      	<li><code>(color-from-scale n col1 start col2 end)</code>
-
-      		<ul>
-      			<li>If <code>n &lt; start</code>, returns <code>col1</code>. If <code>n &gt; end</code>, returns <code>col2</code>. Otherwise returns the color that is a fraction <code>(n - start) / (end - start)</code> between colors <code>col1</code> and <code>col2</code>.</li>
-      			<li>Note: all colors should be in hexadecimal format (strings of the form “#RRGGBB”, where RR, GG, and BB are two-digit hexadecimal numbers representing the amount of red, green, and blue in the color).</li>
-      		</ul></li>
-      </ul>
-
-      <h3><code>coord</code>s</h3>
-
-      <p><code>coord</code>s are used to represent points / coordinates somewhere on the canvas (the name is “<code>coord</code>” rather than “<code>point</code>” because the user will likely want to use the name “<code>point</code>” for variables without overwriting an important function).</p>
-
-      <p>A <code>coord</code> of the point (x, y) is constructed as follows:</p>
-
-      <pre><code>(coord x y)
-      </code></pre>
-
-      <p>Other functions for constructing <code>coord</code>s are:</p>
-
-      <ul>
-      	<li><code>(rand-point)</code>
-
-      		<ul>
-      			<li>Returns a random <code>coord</code> on the canvas.</li>
-      		</ul></li>
-      </ul>
-
-      <p>Functions on <code>coord</code>s:</p>
-
-      <ul>
-      	<li><code>(x-of c)</code>
-
-      		<ul>
-      			<li>Returns the x-coordinate of <code>c</code>.</li>
-      		</ul></li>
-      	<li><code>(y-of c)</code>
-
-      		<ul>
-      			<li>Returns the y-coordinate of <code>c</code>.</li>
-      		</ul></li>
-      	<li><code>(coord? c)</code>
-
-      		<ul>
-      			<li>Returns <code>#T</code> if <code>c</code> is a <code>coord</code>, <code>#F</code> otherwise.</li>
-      		</ul></li>
-      	<li><code>(in-bounds? c)</code>
-
-      		<ul>
-      			<li>Returns <code>#T</code> if <code>c</code> is inside the boundaries of the canvas (or exactly on them).</li>
-      		</ul></li>
-      	<li><code>(translate-coord c dx dy)</code>
-
-      		<ul>
-      			<li>Returns the <code>coord</code> you get when <code>c</code> is translated <code>dx</code> in the x-direction and <code>dy</code> in the y-direction.</li>
-      		</ul></li>
-      	<li><code>(over c dist)</code> / <code>(under c dist)</code> / <code>(left-of c dist)</code> / <code>(right-of c dist)</code>
-
-      		<ul>
-      			<li>Return a <code>coord</code> that is a distance <code>dist</code> up/down/left/right of <code>c</code>.</li>
-      		</ul></li>
-      	<li><code>(average-of-coords coord-list)</code> / <code>(average-of-coords coord1 coord2 coord3 ...)</code>
-
-      		<ul>
-      			<li>If the first argument is a list: returns the average position of each <code>coord</code> in the list.</li>
-      			<li>Else: returns the average position of each <code>coord</code> passed as an argument to <code>average-of-coords</code>.</li>
-      		</ul></li>
-      	<li><code>(distance coord1 coord2)</code>
-
-      		<ul>
-      			<li>Returns the distance between <code>coord1</code> and <code>coord2</code>.</li>
-      		</ul></li>
-      	<li><code>(coord+vect c v)</code>
-
-      		<ul>
-      			<li>Returns the coord that is at the position of coord <code>c</code>, but displaced by the vector <code>v</code>.</li>
-      		</ul></li>
-      </ul>
-
-      <h3><code>vector</code>s</h3>
-
-      <p>A <code>vector</code> is constructed as follows: <code>(vector x y z)</code> (the <code>z</code> component of the vector defaults to 0 and can be omitted).</p>
-
-      <p>The following constructors are also available:</p>
-
-      <ul>
-      	<li><code>(mag/dir-&gt;vect magnitude direction-angle)</code> converts a length and angle into a vector.</li>
-      	<li><code>(dir-&gt;vect angle)</code> returns a unit vector pointing at a specified angle.</li>
-      	<li><code>(coords-&gt;vect x1 y1 x2 y2)</code> returns a vector from point (x1, y1) to (x2, y2).</li>
-      	<li><code>(points-&gt;vect a b)</code> returns a vector from <code>coord</code> <code>a</code> to <code>coord</code> <code>b</code>.</li>
-      </ul>
-
-      <p>The <code>vector</code> function returns a function that tags can be passed to in order to achieve things (see the section below for a more detailed look at how this type of thing is used, or just read on).</p>
-
-      <p>If <code>v</code> is a vector (that is, the function returned by using <code>vector</code> to construct a vector), then:</p>
-
-      <ul>
-      	<li><code>(v)</code> returns a list containing the components of the vector.</li>
-      	<li><code>(v &#39;x)</code> / <code>(v &#39;y)</code> / <code>(v &#39;z)</code> can be used to access the x/y/z components of the vector.</li>
-      	<li><code>(v &#39;set-x)</code> / <code>(v &#39;set-y)</code> / <code>(v &#39;set-z)</code> can be used to CHANGE the x/y/z components of the vector.</li>
-      	<li><code>(v &#39;set new-values)</code> can be used to set the x, y, and z components of <code>v</code> to the 0th, 1st, and 2nd (defaults to zero) element in the list <code>new-values</code>.</li>
-      	<li><code>(v &#39;+ w)</code> returns the sum of vectors <code>v</code> and <code>w</code>.</li>
-      	<li><code>(v &#39;* factor)</code> returns a vector where each component is <code>factor</code> times larger than in <code>v</code>.</li>
-      	<li><code>(v &#39;norm)</code> returns a unit vector pointing in <code>v</code>’s direction.</li>
-      	<li><code>(v &#39;normalize!)</code> CHANGES <code>v</code> so that it becomes a unit vector (same direction, length is 1).</li>
-      	<li><code>(v &#39;dot w)</code> returns the dot product of vectors <code>v</code> and <code>w</code>. </li>
-      	<li><code>(v &#39;cross w)</code> returns the cross product of vectors <code>v</code> and <code>w</code> (note: this is a vector).</li>
-      	<li><code>(v &#39;perpendicular)</code> returns a vector perpendicular to <code>v</code>.</li>
-      	<li><code>(v &#39;parallel? w)</code> tests whether vectors <code>v</code> and <code>w</code> are parallel to each other.</li>
-      	<li><code>(v &#39;angle)</code> returns the angle at which <code>v</code> points.</li>
-      	<li><code>(v &#39;rotated angle)</code> returns the vector you get when <code>v</code> is rotated by <code>angle</code>.</li>
-      </ul>
-
-      <h3>Drawing elements</h3>
-
-      <p>For the function descriptions below, all arguments are listed in order. Keep in mind that Lisk also allows identifying arguments by name rather than order. The following are equivalent:</p>
-
-      <pre><code>(circle 100 200 40)
-      (circle (x: 100) (y: 200) (r: 40))
-      (circle (r: 40) (x: 100) (y: 200))
-      </code></pre>
-
-      <p>All functions here will fill in random or default values for any arguments that you fail to pass.</p>
-
-      <p>The functions in this section all return a function, which can be used to retrieve information about the element and/or draw/get new elements.</p>
-
-      <p>For instance, if you write <code>(let l (line))</code>, <code>l</code> will be bound to the function that the <code>line</code> function returns. Write <code>(l &#39;angle)</code>, and you will get the angle of the line. <code>(l &#39;draw)</code>, meanwhile, returns yet another function, which you can pass arguments to in order to draw the line in a specified way.</p>
-
-      <p>Note also that because Lisk allows for named functions, you can write things like <code>(line (color: &quot;red&quot;) (angle: pi))</code> and not have to worry about argument order.</p>
-
-      <h4><code>stroke-style</code></h4>
-
-      <p><code>stroke-style</code> is a <code>group</code>; basically just a function that will spit out preset parameters when passed the right symbols as an argument.</p>
-
-      <p>It takes the following arguments:</p>
-
-      <ul>
-      	<li><code>width</code> (defaults to 1)</li>
-      	<li><code>color</code> (defaults to black)</li>
-      	<li><code>style</code>: either <code>dash</code>/<code>dashed</code>, <code>dot</code>/<code>dotted</code>, or <code>dash dot</code>/<code>dot dash</code> (slash-separated terms are equivalent; there are two to make it harder to forget both). Defaults to a solid stroke if none of these options are specified.</li>
-      </ul>
-
-      <p>The <code>text-style</code> function is similar (see description of text-related functions below).</p>
-
-      <p><strong>Example:</strong></p>
-
-      <pre><code>(let red-stroke (stroke-style (color: &quot;red&quot;)))
-      (circle (stroke: red-stroke))
-      </code></pre>
-
-      <p>The circle will now be drawn with a red outline.</p>
-
-      <h4><code>line</code></h4>
-
-      <p>Do not confuse <code>line</code>s (infinite in length) with <code>lseg</code>s (line segments).</p>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>point</code>: a <code>coord</code> on the line (default: a random point on the canvas).</li>
-      			<li><code>angle</code>: the line’s angle (default: a random value between 0 and 2* pi (tau)).</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code>.</li>
-      			<li><code>draw?</code>: whether to draw the line immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the line will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>l</code> is the <code>line</code> object):
-
-      		<ul>
-      			<li><code>(l &#39;point)</code>: returns the point used to define the line.</li>
-      			<li><code>(l &#39;angle)</code>: returns the line’s angle.</li>
-      			<li><code>(l &#39;vector)</code>: returns a unit <code>vector</code> pointing in the direction of the line.</li>
-      			<li><code>(l &#39;intersect j)</code>: returns the <code>coord</code> at which <code>line</code>s <code>l</code> and <code>j</code> intersect, or <code>#f</code> if such a point does not exist.</li>
-      			<li><code>(l &#39;bound-intersects)</code>: returns a list of <code>coord</code>s at which the line intersects the boundaries of the canvas.</li>
-      			<li><code>(l &#39;y-at-x x)</code>: returns the y-coordinate of the point on the line for which the x-coordinate is <code>x</code>, or <code>#f</code> if such a point does not exist.</li>
-      			<li><code>(l &#39;x-at-y y)</code>: same as above, but y/x flipped.</li>
-      			<li><code>(l &#39;draw)</code>: returns a function that takes the arguments <code>color</code> and <code>thickness</code> that can be used to draw the line (a black line of thickness 1 is the default).</li>
-      		</ul></li>
-      </ul>
-
-      <p>The following functions relating to lines are also available:</p>
-
-      <ul>
-      	<li><code>(cline point angle)</code>
-
-      		<ul>
-      			<li>Returns a line object; does not render the line (a shortcut that can be used instead of passing <code>(draw?: #f)</code> as an argument to the <code>line</code> function).</li>
-      			<li>“<code>cline</code>” can be remembered as an abbreviation of “compute line”; that is, a line used for computing the position of something else rather than being (automatically) drawn on the diagram. </li>
-      		</ul></li>
-      	<li><code>(line-from-points x1 y1 x2 y2 color thickness draw?)</code>
-
-      		<ul>
-      			<li>Constructs a line that passes through points (x1, y1) and (x2, y2).</li>
-      			<li>Alternatively, the first two arguments can be points, in which case the function will automatically extract their x/y coordinates and work correctly.</li>
-      		</ul></li>
-      	<li><code>(cline-from-points x1 y1 x2 y2)</code>
-
-      		<ul>
-      			<li>The same as above, but the line will not render automatically.</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>lseg</code></h4>
-
-      <p>“<code>lseg</code>” is an abbreviation of “line segment”.</p>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> at which the line segment starts (default: a random point on the canvas).</li>
-      			<li><code>end</code>: a <code>coord?</code> at which the line segment ends (default: a random point on the canvas).</li>
-      			<li><code>stroke</code>.</li>
-      			<li><code>draw?</code>: whether to draw the line immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the line segment will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>seg</code> is the <code>lseg</code> object):
-
-      		<ul>
-      			<li><code>(seg &#39;start)</code> / <code>(seg &#39;end)</code>: returns the start/end points of the <code>lseg</code>.</li>
-      			<li><code>(seg &#39;length)</code>: returns the length of the line segment.</li>
-      			<li><code>(seg &#39;line)</code>: returns the <code>line</code> along which the line segment lies (the line is not drawn).</li>
-      			<li><code>(seg &#39;draw)</code>: returns a function that takes the arguments <code>color</code> and <code>thickness</code> that can be used to draw the line segment (a black line segment of thickness 1 is the default).</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>q-bezier</code> (quadratic Bezier curve)</h4>
-
-      <ul>
-      	<li>Arguments (all arguments that take a <code>coord</code> default to a random one):
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> where the curve starts.</li>
-      			<li><code>end</code>: a <code>coord</code> where the curve ends.</li>
-      			<li><code>control</code>: a <code>coord</code> representing the the control point (towards which the curve will arc as it goes from <code>start</code> to <code>end</code>).</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>c-bezier</code> (quadratic Bezier curve)</h4>
-
-      <ul>
-      	<li>Arguments (all arguments that take a <code>coord</code> default to a random one):
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> where the curve starts.</li>
-      			<li><code>s-control</code>: a <code>coord</code> representing the control point of the starting point (the curve will begin by heading in this direction).</li>
-      			<li><code>e-control</code>: a <code>coord</code> representing the control point of the ending point (the curve will curve away from this direction as it heads towards <code>end</code>).</li>
-      			<li><code>end</code>: a <code>coord</code> where the curve ends.</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>curve</code> (cubic Bezier curve, drawn from different parameters)</h4>
-
-      <ul>
-      	<li>Arguments (all arguments that take a <code>coord</code> default to a random one):
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> where the curve starts.</li>
-      			<li><code>end</code>: a <code>coord</code> where the curve ends.</li>
-      			<li><code>s-angle</code>: the angle at which the curve leaves <code>start</code>. Defaults to a random angle.</li>
-      			<li><code>e-angle</code>: the angle at which the curve enters <code>end</code>. Defaults to a random angle.</li>
-      			<li><code>s-size</code>: how far the curve tends in the direction of <code>s-angle</code> (the starting control point for the Bezier curve is placed this distance from <code>start</code>). Defaults to a random value between 0 and the distance between <code>start</code> and <code>end</code>.</li>
-      			<li><code>e-size</code>: from how far the curve tends towards the direction of <code>e-angle</code> as it approaches the end (the ending control point for the Bezier curve is placed this distance from <code>end</code>). Defaults to the same random value as <code>s-size</code> (so unless otherwise specified, <code>s-size = e-size</code>, and specifying <code>s-size</code> alone is enough to set <code>e-size</code> to the same value).</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>arc-from-flags</code> (circular arc)</h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> where the arc starts. Defaults to a random point.</li>
-      			<li><code>end</code>: a <code>coord</code> where the arc ends. Defaults to a random point.</li>
-      			<li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
-      			<li><code>size-flag</code>: either true or false. See SVG arc documentation to see how to use it. Defaults to false.</li>
-      			<li><code>sweep-flag</code>: either true or false. Refer to SVG arc documentation to see how to use it. Defaults to false.</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>arc</code> (circular arc)</h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>mid</code>: a <code>coord</code> representing the mid point of the circle the arc is part of. Defaults to a random point.</li>
-      			<li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
-      			<li><code>a1</code>: the angle (relative to the circle’s centre) that the arc begins at. Defaults to a random angle.</li>
-      			<li><code>a2</code>: the angle that the arc ends at. Defaults to a random angle.</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;mid)</code> will give you the value of <code>mid</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>arrow</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>start</code> and</li>
-      			<li><code>end</code>, both coords.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties. </li>
-      			<li><code>angle</code>: the angle of the arrow head.</li>
-      			<li><code>size</code>: the size of the lines on the arrow head. Defaults to 1/6 of the distance between <code>start</code> and <code>end</code>.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>c-arrow</code> (curved arrow)</h4>
-
-      <ul>
-      	<li>Arguments (all arguments that take a <code>coord</code> default to a random one):
-
-      		<ul>
-      			<li><code>start</code>: a <code>coord</code> where the curve starts.</li>
-      			<li><code>end</code>: a <code>coord</code> where the curve ends.</li>
-      			<li><code>s-angle</code>: the angle at which the curve leaves <code>start</code>. Defaults to a random angle.</li>
-      			<li><code>e-angle</code>: the angle at which the curve enters <code>end</code>. Defaults to a random angle.</li>
-      			<li><code>s-size</code>: how far the curve tends in the direction of <code>s-angle</code> (the starting control point for the Bezier curve is placed this distance from <code>start</code>). Defaults to a random value between 0 and the distance between <code>start</code> and <code>end</code>.</li>
-      			<li><code>e-size</code>: from how far the curve tends towards the direction of <code>e-angle</code> as it approaches the end (the ending control point for the Bezier curve is placed this distance from <code>end</code>). Defaults to the same random value as <code>s-size</code> (so unless otherwise specified, <code>s-size = e-size</code>, and specifying <code>s-size</code> alone is enough to set <code>e-size</code> to the same value).</li>
-      			<li><code>angle</code>: the angle of the arrow head.</li>
-      			<li><code>size</code>: the length of the lines on the arrow head.</li>
-      			<li><code>fill</code>: fill colour. Defaults to “none”.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>arc-arrow</code> (arrow along a circular arc)</h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>mid</code>: a <code>coord</code> representing the mid point of the circle the arc is part of. Defaults to a random point.</li>
-      			<li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
-      			<li><code>a1</code>: the angle (relative to the circle’s centre) that the arc begins at. Defaults to a random angle.</li>
-      			<li><code>a2</code>: the angle that the arc ends at. Defaults to a random angle.</li>
-      			<li><code>angle</code>: the angle of the arrow head.</li>
-      			<li><code>size</code>: the length of the lines on the arrow head.</li>
-      			<li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
-      		</ul></li>
-      	<li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;r)</code> will give you the value of <code>r</code> when the function was run.</li>
-      </ul>
-
-      <h4><code>circle</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>x</code> / <code>y</code>: the x/y-coordinates of the centre of the circle (default: randomly selected, but guaranteed to be on the canvas).</li>
-      			<li><code>r</code>: the circle’s radius.</li>
-      			<li><code>fill</code>: the colour of the circle’s interior (default: “none”)</li>
-      			<li><code>stroke</code>.</li>
-      			<li><code>draw?</code>: whether to draw the circle immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the circle will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>O</code> is the <code>circle</code> object):
-
-      		<ul>
-      			<li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the circle.</li>
-      			<li><code>(O &#39;point-at-angle angle)</code>: returns the <code>coord</code> of a point on the circle at an angle of <code>angle</code> relative to the circle’s centre (<code>angle</code> defaults to a random angle).</li>
-      			<li><code>(O &#39;area)</code>: returns the area of the circle, in square pixels on the canvas.</li>
-      			<li><code>(O &#39;radial-vect angle)</code>: returns a <code>vector</code> from the circle’s centre to a point at angle <code>angle</code> on its perimeter (<code>angle</code> defaults to a random value).</li>
-      			<li><code>(O &#39;tangent angle)</code>: returns a <code>line</code> that is tangent to the circle and meets it at a given angle to the circle’s centre (the line is not drawn, and <code>angle</code> defaults to a random value).</li>
-      			<li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the circle.</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>ellipse</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>x</code> / <code>y</code>: the x/y-coordinates of the centre of the circle (default: randomly selected, but guaranteed to be on the canvas).</li>
-      			<li><code>rx</code> / <code>ry</code>: the radius of the ellipse in the x- and y-directions, respectively (by default, reasonable random values).</li>
-      			<li><code>angle</code>: an angle at which the ellipse is to be rotated (0 by default) </li>
-      			<li><code>fill</code>: the colour of the ellipse’s interior (default: “none”)</li>
-      			<li><code>stroke</code>.</li>
-      			<li><code>draw?</code>: whether to draw the ellipse immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the ellipse will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>O</code> is the <code>ellipse</code> object):
-
-      		<ul>
-      			<li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the ellipse.</li>
-      			<li><code>(O &#39;rx)</code> / <code>(O &#39;ry)</code> / <code>(O &#39;angle)</code>: returns the respective property of the ellipse.</li>
-      			<li><code>(O &#39;eccentricity)</code>: calculates the eccentricity of the ellipse.</li>
-      			<li><code>(O &#39;semi-major)</code>: returns the length of the ellipse’s semi-major axis (in other words, whichever of <code>rx</code> and <code>ry</code> is larger).</li>
-      			<li><code>(O &#39;semi-minor)</code>: returns the length of the ellipse’s semi-minor axis (in other words, whichever of <code>rx</code> and <code>ry</code> is smaller).</li>
-      			<li><code>(O &#39;diameter-lseg-x)</code> / <code>(O &#39;diameter-lseg-y)</code>: returns line segments (which are not rendered) representing the ellipse’s diameter along the x/y axis of the ellipse (the ellipse’s angle does not affect this).</li>
-      			<li><code>(O &#39;major-axis)</code> / <code>(O &#39;minor-axis)</code>: the same as above, but automatically selects the larger/smaller of the diameter line segments.</li>
-      			<li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the ellipse.</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>polygon</code></h4>
-
-      <p>The most general polygon-drawing function; see below for more specific cases (rectangles, etc.)</p>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>vertices</code>: a list of <code>coord</code>s specifying where (relative to the polygon’s centre) to place the polygon’s vertices (defaults to a set of three random points on the canvas).</li>
-      			<li><code>centre</code>: a <code>coord</code> specifying the centre of the polygon (default: <code>(coord 0 0)</code>). </li>
-      			<li><code>fill</code>: the colour of the polygon’s interior (default: “none”)</li>
-      			<li><code>stroke</code>.</li>
-      			<li><code>draw?</code>: whether to draw the polygon immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the polygon will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>P</code> is the <code>polygon</code> object):
-
-      		<ul>
-      			<li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the polygon.</li>
-      			<li><code>(O &#39;vertices)</code>: returns the list of vertices (each a <code>coord</code> representing the x/y distance from the polygon’s centre) of the polygon.</li>
-      			<li><code>(O &#39;vertex-coords)</code>: returns the coordinates (each a <code>coord</code>) of the polygon’s vertices (that is, where on the canvas they will be drawn, rather than their locations relative to the polygon’s centre).</li>
-      			<li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the polygon.</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>rect</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>x</code> / <code>y</code>: the coordinates of the top-left corner of the <code>rect</code>.</li>
-      			<li><code>width</code> / <code>height</code></li>
-      			<li><code>fill</code>: the colour of the polygon’s interior (default: “none”)</li>
-      			<li><code>stroke</code>.</li>
-      			<li><code>draw?</code>: whether to draw the polygon immediately (default: <code>#T</code>)</li>
-      		</ul></li>
-      	<li>Actions:
-
-      		<ul>
-      			<li>if <code>draw?</code> is <code>#T</code> (which it is by default), the rectangle will be rendered on the canvas immediately.</li>
-      		</ul></li>
-      	<li>Returns a function which can be used in the following ways (<code>P</code> is the <code>polygon</code> object):
-
-      		<ul>
-      			<li><code>(O &#39;x)</code> / <code>(O &#39;y)</code>: returns the x/y coordinate of the top-left corner of the rectangle.</li>
-      			<li><code>(O &#39;h)</code> / <code>(O &#39;height)</code>: returns the rectangle’s height.</li>
-      			<li><code>(O &#39;w)</code> / <code>(O &#39;width)</code>: returns the rectangle’s width. </li>
-      			<li><code>(O &#39;corners)</code> / <code>(O &#39;vertices)</code>: returns a vertex list (each a <code>coord</code> representing the x/y coordinate of a corner of the rectangle).</li>
-      			<li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the rectangle.</li>
-      		</ul></li>
-      </ul>
-
-      <h4><code>text</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>content</code>: what text to display.</li>
-      			<li><code>loc</code>: a <code>coord</code> specifying the position of the top-left corner of where to start drawing the text.</li>
-      			<li><code>style</code>: a <code>text-style</code> specifying any stylistic properties (defaults to size 16 black Baskerville text).</li>
-      		</ul></li>
-      </ul>
-
-      <p><code>text-style</code> is a <code>group</code> that takes the arguments <code>size</code>, <code>color</code>, <code>styling</code>, and <code>font</code>.</p>
-
-      <p><strong>Example:</strong></p>
-
-      <pre><code>(let red-text (text-style (color: red) (styling: &quot;underline&quot;)))
-      (text &quot;Sample text&quot; (coord 100 200) red-text)
-      </code></pre>
-
-      <p>This first defines a <code>text-style</code>, and then draws text at x=100, y=200 with that styling.</p>
-
-      <h4><code>tex</code></h4>
-
-      <ul>
-      	<li>Arguments:
-
-      		<ul>
-      			<li><code>content</code>: the LaTeX code to render.</li>
-      			<li><code>loc</code>: a <code>coord</code> specifying the top-left corner from which to start rendering.</li>
-      			<li><code>size</code>: the font size to use.
-
-      				<ul>
-      					<li>MathJax is sometimes a bit weird with font sizes; changing what LaTeX you’re rendering will sometimes rescale the result.</li>
-      				</ul></li>
-      		</ul></li>
-      </ul>
-
-
-
-
-
-
-
-
-
-
-
-
-    </div>
-
-
-
-  </body>
-  </html>
+</head>
+
+<body>
+  <div id="contents">
+    <center>
+      <h1 id="title">Schematica <br>Manual</h1>
+    </center>
+
+    <h1>What is Schematica?</h1>
+
+    <p>Schematica is a tool for creating diagrams and other images. Schematica aims to require a minimum of specification from the user –&nbsp;by default, Schematica uses its own discretion to decide where to place elements, in accordance with user requirements. Schematica also aims for a maximum of precision and flexibility by allowing the user to write instructions that specify the image, rather than having to fiddle around with a user interface.</p>
+
+    <h2>What is Lisk?</h2>
+
+    <p>Lisk is the programming language in which Schematica users write their code. The name is an abbreviation of &quot;List Sketcher&quot;, a nod to the programming language Lisp (&quot;List Processor&quot;) which Lisk borrows heavily from (in fact, Lisk is practically a dialect of Lisp rather than its own language).</p>
+
+    <h1>Syntax</h1>
+
+    <p>Though the syntax may look strange at first, there&#39;s a reason for it: it really is the simplest and most flexible syntax possible.</p>
+
+    <p>There are only three syntax or &quot;grammar&quot; rules that you need to understand how to read and write instructions in Schematica:</p>
+
+    <ul>
+      <li>A self-evaluating expression –&nbsp;that is, numbers, strings, true, false, and undefined –&nbsp;evaluates to itself.</li>
+      <li>A variable evaluates to the value it stands for.</li>
+      <li>If an expression is in parentheses, the first item in parentheses is the function that is to be applied to the rest of the parenthesised elements. For instance, <code>+</code> is the addition function, so <code>(+ 1 2 3)</code> evaluates to <code>6</code>.
+        <ul>
+          <li>Many Schematica functions can take a lot of arguments, almost all of which are optional. Hence, to simplify function calls, arguments can also be passed by name (in any order) as follows: <code>(circle (radius: 3) (color: yellow))</code>. (The only exception are some built-in functions)</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p>In addition, there is a rule for how many instructions in a row are to be interpreted:</p>
+
+    <ul>
+      <li>Evaluate each instruction in order, and return the value of the last.</li>
+    </ul>
+
+    <p>This eliminates the need for a “return” statement like the one many programming languages are encumbered with.</p>
+
+    <h2>Spacing, indentation &amp; line breaks</h2>
+
+    <p>One of the many beauties of Lisp-style syntax (in addition to many curvy parentheses) is that no semicolons or other statement breaks are required to separate statements, and whitespace does not need to be given any specific importance.</p>
+
+    <p>Thus, though it is possible to write out your entire program in one line, feel free to add spaces, line breaks, and indentation wherever and however you wish to make things easier to read.</p>
+
+    <p>(The most minimal whitespace requirement can be stated like this: if there’s at least one whitespace character between every pair of adjacent symbols that is not separated by an opening or a closing parentheses, you’re fine. Or, more briefly: don’t worry about whitespace.)</p>
+
+    <h2>Types</h2>
+
+    <ul>
+      <li>Numbers</li>
+      <li>Strings</li>
+      <li>Lists</li>
+      <li>Functions</li>
+      <li>Special values
+        <ul>
+          <li><code>#t</code> -&gt; “true”</li>
+          <li><code>#f</code> -&gt; “false”</li>
+          <li><code>#u</code> -&gt; “undefined”. If a function is called without all of its arguments being specified, the unspecified arguments are set to <code>#u</code>. Also returned in some other cases.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h1>Built-in functions and primitives</h1>
+
+    <p>This section lists all functions built into the Lisk language (the default functions listed in the next section are also available to the user; as a user, the only difference you have to care about is that built-in functions do not take named arguments).</p>
+
+    <h2>Primitives</h2>
+
+    <ul>
+      <li><code>(let variableName value)</code>
+        <ul>
+          <li>A variable with the name <code>variableName</code> will now be set to <code>value</code></li>
+          <li><code>let</code> can be used to both modify existing variables as well as define new ones.</li>
+          <li>If a previously undefined variable is defined inside a function, it is only available inside that function.</li>
+          <li>Variable names can include any character except “(“, “)”, and “:”.</li>
+          <li><strong>Example</strong>:
+            <ul>
+              <li><code>(let x 42)</code> -&gt; sets <code>x</code> to 42</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li> <code>(quote expr)</code>
+        <ul>
+          <li>Returns <code>expr</code>, without evaluating it (that is, if <code>var</code> is a variable, <code>(quote var)</code> returns the symbol <code>var</code> rather than the value of <code>var</code>).</li>
+          <li>Most useful for defining lists: note that running <code>(1 2 3)</code> will result in Schematica trying to apply the function <code>1</code> to the arguments 2 and 3; to create the list <code>[ 1 2 3 ]</code>, instead use <code>(quote (1 2 3))</code>.</li>
+          <li>The abbreviation <code>&#39;var</code> is equivalent to <code>(quote var)</code>. No whitespace is allowed between the single quote and the expression to be quoted.</li>
+          <li><strong>Example:</strong>
+            <ul>
+              <li><code>&#39;(1 (2 3) 4)</code> -&gt; returns a list with the elements 1, the list of 2 and 3, and 4.</li>
+            </ul>
+          </li>
+          <li><strong>Note:</strong> The interpreter currently does not support nested abbreviation such as <code>&#39;&#39;var</code>. Use <code>&#39;(quote var)</code> instead.</li>
+        </ul>
+      </li>
+      <li><code>(if predicate consequent alternative)</code>
+        <ul>
+          <li>If the value of <code>predicate</code> is true, <code>consequent</code> is evaluated; if <code>predicate</code> is false, <code>alternative</code> is evaluated.</li>
+          <li><strong>Example:</strong>
+            <ul>
+              <li><code>(if (&gt; x 2) x &quot;&lt;3&quot;)</code> -&gt; if the variable <code>x</code> is greater than 2, <code>x</code> is returned; otherwise, the string “&lt;3” is returned.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><code>(for loopVar startVal endCondition nextExpr loopExpr)</code>
+        <ul>
+          <li><code>loopVar</code> is the name used for the loop variable.</li>
+          <li><code>startVal</code> is the first value of the loop variable.</li>
+          <li><code>endCondition</code> is a boolean statement. The loop will continue until this expression evaluates to false (a limit for the number of times a loop can loop is set in the code, but don’t rely on this).</li>
+          <li><code>nextExpr</code> is evaluated after each time <code>loopExpr</code> is evaluated to obtain the new value of the loop variable.</li>
+          <li><code>loopExpr</code> is any expression; it will be performed however many times the loop runs, in an environment where the loop variable takes successive values based on <code>nextExpr</code>.</li>
+          <li><strong>Example:</strong>
+
+            <pre>(for i 0 (&lt; i 10) (++ i)
+  (print i))</pre>
+
+            <ul>
+              <li>This will print the numbers from 0 to 9 inclusive.</li>
+            </ul>
+          </li>
+          <li><strong>Note:</strong>
+            <ul>
+              <li>Lisk is, or at least tries to be, a mostly functional-style language, which means the language is designed to generally make recursion easy and hence reduce the need for any sort of loops. However, the Lisk interpreter that Schematica uses does not optimise tail recursion, which means that performing loops through recursion takes up more and more memory the longer the loop is. Due to the limitations of Javascript stack size and the inefficiencies of the Lisk interpreter, this sets a fairly hard and low upper limit on recursion-based looping, which is why Lisk implements a for-loop primitive.</li>
+              <li>The upside of this is that users without prior exposure to functional programming will (at least initially) likely find thinking in for-loop based iteration easier than thinking in terms of recursion-based iterative functions. </li>
+              <li>(To really experience the joys of Lisk, a functional approach is recommended where possible.)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><code>(// a sample comment)</code>
+        <ul>
+          <li>Anything else in a parenthesised expression starting with <code>//</code> will be ignored. This can be used to add comments to code.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Functions</h3>
+
+    <p>We have seen how variables can be defined with <code>let</code>. Functions in Lisk are just another type of variable, though with a special form. As an example, consider the definition:</p>
+
+    <pre>(let f (! (x y) (+ (* x x) (* y y))))</pre>
+
+    <p>For clarity, we can add some indentation and line breaks:</p>
+
+    <pre>(let f (! (x y)
+  (+ (* x x)
+  (* y y))))</pre>
+
+    <p>This statement can be read as: “Let <code>f</code> be a function on the arguments <code>x</code> and <code>y</code> that returns the sum of <code>x</code> squared and <code>y</code> squared.</p>
+
+    <p>The form of a function expression is:<code>(! list-of-arguments body-expression-1 body-expression 2 ... body-expression-n)</code>. All body expressions are evaluated, and the value of the last is returned as the value of the function (this does not matter if the value of the function is not used by anything).</p>
+
+    <p>(The keyword <code>lambda</code> can be used instead of <code>!</code>. The word “lambda” is used in many Lisp-family languages for historical reasons.)</p>
+
+    <p>You do not need to define a function to use it. For instance,</p>
+
+    <pre>( (! (x) (* 2 x))    2)</pre>
+
+    <p>returns 4, just as if you had separately defined a doubling function as <code>(let double (! (x) (* 2 x)))</code> and then called <code>(double 2)</code>. </p>
+
+    <p>For functions of one variable, a shortcut notation is available; you do not need to have a list of arguments, but can instead write, for example, <code>(let double (! x (* 2 x)))</code>.</p>
+
+    <p>The <code>def</code> macro makes function definitions a bit more convenient to write and is made available by the SDL; see below for details.</p>
+
+    <p>Since functions are just a type of variable, functions can return functions, as well as take functions as arguments:</p>
+
+    <pre>(let composite (! (f g)
+  (! (x) (f (g x)))))
+(let f (! (x) (* 2 x)))
+(let g (! (x) (+ 1 x)))
+(let f-of-g (composite f g))
+(print (f-of-g 3))</pre>
+
+    <p>The above example would compute (3 + 1) * 2 and hence print 8 to the console.</p>
+
+    <h4>Function functions &amp; representation</h4>
+
+    <p><code>(function? x)</code> tests whether <code>x</code> is a function.</p>
+
+    <p>If a function is logged to the console, you will see a list, the first element of which is either <code>primitive</code> (if the function is a built-in primitive function) or <code>function</code>, if the function was defined by the user or by the default Schematica library.</p>
+
+    <p>(If you wish to test whether <code>func</code> is a primitive function, use something like this: <code>(= (first func) ´primitive)</code> - this “hack” currently works because of the way functions are internally represented, but might change in the future.)</p>
+
+    <h4>Closures</h4>
+
+    <p>Lisk supports closures.</p>
+
+    <h2>Logic functions</h2>
+
+    <ul>
+      <li><code>(not x)</code>
+        <ul>
+          <li>If <code>x</code> “is true” (that is, <code>x</code> is not <code>#f</code> (false), <code>#u</code> (undefined), or zero, returns <code>#f</code>. Otherwise returns <code>#t</code>.</li>
+        </ul>
+      </li>
+      <li><code>(and b1 b2 b3 ... )</code>
+        <ul>
+          <li>Returns <code>#t</code> if all arguments are true, <code>#f</code> otherwise.</li>
+        </ul>
+      </li>
+      <li><code>(or b1 b2 b3 ... )</code>
+        <ul>
+          <li>Returns <code>#t</code> if at least one argument is true, <code>#f</code> otherwise.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Equality Functions</h2>
+
+    <ul>
+      <li><code>(= x1 x2 x3 ... )</code>
+        <ul>
+          <li>Returns <code>#t</code> (true) if all arguments are equal, <code>#f</code> otherwise.</li>
+          <li>To avoid problems with Javascript’s floating-point precision (things like 0.2 + 0.1 being 0.30000000000000004), numbers will be considered equal if they are very close to each other (within 1 x 10^-10).</li>
+        </ul>
+      </li>
+      <li><code>(== x1 x2 x3 ...)</code>
+        <ul>
+          <li>The same as above, except numbers are considered equal only if they are exactly the same, any floating-point imprecision included.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Mathematical functions</h2>
+
+    <p>These are self-explanatory, except for two notes:</p>
+
+    <ul>
+      <li>Note that prefix order means things are a bit different and can look weird: <code>(+ 2 (* 3 2))</code> instead of <code>2 + 3 * 2</code>, and so on.</li>
+      <li>Where it makes sense, a function can take multiple arguments (this is one of the strengths of prefix notation). For instance, <code>(+ a1 a2 a3 a4)</code> sums up four values; <code>(&gt; p q1 q2 q3 q4)</code> tests whether <code>p</code> is greater than all the other arguments.</li>
+    </ul>
+
+    <p>For equality functions, see the above section.</p>
+
+    <ul>
+      <li><code>(number? n)</code></li>
+      <li><code>(integer? n)</code></li>
+      <li><code>(&gt; a b1 b2 b3 ...)</code>
+        <ul>
+          <li>Returns true (<code>#t</code>) if <code>a</code> is greater than all the b-variables; false (<code>#f</code>) otherwise.</li>
+        </ul>
+      </li>
+      <li><code>(&lt; a b1 b2 b3 ...)</code>
+        <ul>
+          <li>Less-than; analogous to the above.</li>
+        </ul>
+      </li>
+      <li><code>(+ a1 a2 a3 ...)</code></li>
+      <li><code>(- n s1 s2 s3 ...)</code></li>
+      <li><code>(/ n d1 d2 d3 ...)</code></li>
+      <li><code>(* a1 a2 a3 ...)</code></li>
+      <li><code>(mod x y)</code>
+        <ul>
+          <li>Returns remainder of the division x/y (<code>(mod 8 5)</code> returns 3).</li>
+        </ul>
+      </li>
+      <li><code>(exp n)</code>
+        <ul>
+          <li>Returns e to the power of <code>n</code>.</li>
+        </ul>
+      </li>
+      <li><code>(pow x y)</code>
+        <ul>
+          <li>Returns <code>x</code> to the power of <code>y</code></li>
+        </ul>
+      </li>
+      <li><code>(ln n)</code> (equivalent to <code>(log n)</code>)
+        <ul>
+          <li>Returns the natural logarithm of <code>n</code>.</li>
+        </ul>
+      </li>
+      <li>Trigonometric functions:
+        <ul>
+          <li>Of the form <code>(cos angle-in-radians)</code></li>
+          <li>Available functions: <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code></li>
+        </ul>
+      </li>
+      <li><code>(min n1 n2 n3 ...)</code>
+        <ul>
+          <li>Returns the smallest of any numerical arguments passed to it.</li>
+        </ul>
+      </li>
+      <li><code>(max n1 n2 n3 ...)</code>
+        <ul>
+          <li>Returns the largest of any numerical arguments passed to it.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>List functions</h2>
+
+    <ul>
+      <li><code>(list? var)</code>
+        <ul>
+          <li>Returns true if <code>var</code> is a list, returns false otherwise.</li>
+        </ul>
+      </li>
+      <li><code>(list el1 el2 el3 ...)</code>
+        <ul>
+          <li>Returns a list consisting of all arguments passed to the list.</li>
+        </ul>
+      </li>
+      <li><code>(length lst)</code>
+        <ul>
+          <li>Returns the number of elements in list <code>lst</code>.</li>
+        </ul>
+      </li>
+      <li><code>(nth lst n)</code>
+        <ul>
+          <li>Returns the nth item in <code>lst</code>.</li>
+          <li>Note that lists are zero-indexed (that is, the first character is at position 0, not 1).</li>
+        </ul>
+      </li>
+      <li><code>(set-nth lst n val)</code>
+        <ul>
+          <li>Sets the nth item in <code>lst</code> to <code>val</code> and returns the new list.</li>
+        </ul>
+      </li>
+      <li><code>(first lst)</code>
+        <ul>
+          <li>Returns the first item in <code>lst</code>.</li>
+          <li>To maintain continuity with Lisp, this function is also available with the name <code>car</code>.</li>
+        </ul>
+      </li>
+      <li><code>(rest lst)</code>
+        <ul>
+          <li>Returns <code>lst</code>, except without the first item.</li>
+          <li>To maintain continuity with Lisp, this function is also available with the name <code>cdr</code>.</li>
+        </ul>
+      </li>
+      <li><code>(concat list1 list2 list3 ...)</code>
+        <ul>
+          <li>Returns the list you get when you merge all the lists supplied as arguments to <code>concat</code>.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>String functions</h2>
+
+    <ul>
+      <li><code>(string? str)</code>
+        <ul>
+          <li>Returns true if <code>str</code> is a string, false otherwise.</li>
+        </ul>
+      </li>
+      <li><code>(str-concat str1 str2 str3 ...)</code>
+        <ul>
+          <li>Returns the concatenation of all strings passed as arguments.</li>
+        </ul>
+      </li>
+      <li><code>(str-slice str start end)</code>
+        <ul>
+          <li>Returns a segment of the string <code>str</code> that begins from the position <code>start</code> and extends up to (but not including) the character at position <code>end</code>.</li>
+          <li>Note that strings are zero-indexed (that is, the first character is at position 0, not 1).</li>
+          <li>If the third argument is not passed, <code>end</code> is set to the length of the string.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Logging functions</h2>
+
+    <ul>
+      <li><code>(print val)</code>
+        <ul>
+          <li>Prints <code>val</code> to the Schematica console. Returns <code>val</code>.</li>
+        </ul>
+      </li>
+      <li><code>(cprint text)</code>.
+        <ul>
+          <li>Prints <code>val</code> to the browser’s Javascript console (used for debugging purposes), and returns <code>val</code>.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Drawing functions</h2>
+
+    <p>All primitive draw operations are performed by the <code>draw</code> function. Users are advised, in most cases, to use the more advanced drawing functions provided in the Schematica library; this function is mainly meant to be used internally.</p>
+
+    <p>The draw function returns <code>#u</code>.</p>
+
+    <p>All colours are specified using standard hexadecimal format: a string of the form “#rrggbb”.</p>
+
+    <ul>
+      <li><code>(draw type a1 a2 a3 a4 a5 a6 a7)</code>
+        <ul>
+          <li><code>type</code> must be one of:
+            <ul>
+              <li>“lseg” (line segmenet)</li>
+              <li>“circle”</li>
+            </ul>
+          </li>
+          <li>The meaning of the seven other variables depends on the type:
+            <ul>
+              <li>Type is “lseg”
+                <ul>
+                  <li><code>a1</code> and <code>a2</code> are the x- and y-coordinates, respectively, of the starting point of the line segment.</li>
+                  <li><code>a3</code> and <code>a4</code> are the x- and y-coordinates of the ending point.</li>
+                  <li><code>a5</code> is the colour of the line
+                    <ul>
+                      <li>Default: “#000000” (black)</li>
+                    </ul>
+                  </li>
+                  <li><code>a6</code> is the thickness of the line
+                    <ul>
+                      <li>Default: 1</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>Type is “circle”
+                <ul>
+                  <li><code>a1</code> and <code>a2</code> are the x- and y-coordinates of the centre of the circle.</li>
+                  <li><code>a3</code> is the radius.</li>
+                  <li><code>a4</code> is the fill colour.
+                    <ul>
+                      <li>Default: “none” (no fill)</li>
+                    </ul>
+                  </li>
+                  <li><code>a5</code> is the thickness of the circcle’s outline.
+                    <ul>
+                      <li>Default: 1.</li>
+                    </ul>
+                  </li>
+                  <li><code>a6</code> is the colour of the circle’s outline.
+                    <ul>
+                      <li>Default: “#000000” (black)</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>Type is “ellipse”
+                <ul>
+                  <li><code>a1</code> and <code>a2</code> are the x- and y-coordinates of the centre of the ellipse.</li>
+                  <li><code>a3</code> and <code>a4</code> are the radius along the x-direction and the radius along the y-direction of the ellipse.</li>
+                  <li><code>a5</code> is the angle at which the ellipse is rotated.</li>
+                  <li><code>a6</code> is the fill colour.</li>
+                  <li><code>a7</code> is the outline’s thickness.</li>
+                  <li><code>a8</code> is the outline’s colour.</li>
+                </ul>
+              </li>
+              <li>Type is “polygon”
+                <ul>
+                  <li><code>a1</code> is a list of coordinates, where each coordinate is a list consisting of an x- and y-value.</li>
+                  <li><code>a2</code> is the fill colour.</li>
+                  <li><code>a3</code> is the outline’s thickness.</li>
+                  <li><code>a4</code> is the outline’s colour.</li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><code>(draw-text content x y style fontSize color fontFamily)</code>
+        <ul>
+          <li><code>content</code> is a string containing the text to draw.</li>
+          <li>The text is positioned at coordinate <code>(x, y)</code>.</li>
+          <li><code>style</code> is a string. The space-separated words “italic”, “bold”, “underline”, and “strikethrough” are picked out (if present), and used to style the text. “Strikethrough” and “underline” are mutually exclusive (for reasons not related to Schematica). The default value is the empty string.</li>
+          <li><code>fontSize</code> defaults to 20.</li>
+          <li><code>color</code> is a string corresponding to a color - either a word like “red”, or a hexadecimal color string like “#ff0000”.</li>
+          <li><code>fontFamily</code> is a string that specifies the font to use. I’d tell you which fonts work, but I honestly have no clue. Defaults to Baskerville.</li>
+        </ul>
+      </li>
+      <li><code>(draw-tex content x y fontSize)</code>
+        <ul>
+          <li>Same as <code>draw-tex</code>, but instead of rendering plain text, it uses the MathJax library to process <code>content</code> as LaTeX and (potentially) output beautiful equations. See a LaTeX reference for how to write equations in LaTeX.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Evaluation functions</h2>
+
+    <ul>
+      <li><code>(eval lst)</code>
+        <ul>
+          <li>Evaluates the expression <code>lst</code> in the Lisk evaluator’s global environment.</li>
+        </ul>
+      </li>
+      <li><code>(js-eval expression-str)</code>
+        <ul>
+          <li>Interprets <code>expression-str</code> as Javascript by calling Javascript’s built-in <code>eval</code> function on it.</li>
+          <li>Use at your own risk. </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Other</h2>
+
+    <ul>
+      <li><code>(debug expr1 expr2 expr3 ... )</code>
+        <ul>
+          <li>Prints the value of all expressions passed as arguments.</li>
+          <li>Logs the environment object and a list of variables and their values in the current environment frame to the browser’s javascript console.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Macros</h2>
+
+    <p>Macros can be used to automatically change syntax of a certain form into syntax of a different form.</p>
+
+    <p>Macros are defined with an expression of the following type:</p>
+
+    <pre>(macro (macro-name &lt;syntax-form&gt;) &lt;code&gt;)</pre>
+
+    <p>After such a macro is defined anywhere in the code, whenever <code>macro-name</code> occurs at the beginning of an expression, the code defined in <code>&lt;code&gt;</code> will run instead.</p>
+
+    <p>Symbols starting with a “#” in <code>&lt;syntax-form&gt;</code> will be bound to values based on the macro expression, and any symbols starting with a “#” in <code>&lt;code&gt;</code> will be replaced with the corresponding value.</p>
+
+    <p>For example, say we have this macro:</p>
+
+    <pre>(macro (set-var (#variable #value) if #set?)
+  (if #set?
+    (set #variable #value)))</pre>
+
+    <p>Now say we evaluate this expression:</p>
+
+    <pre>(set-var (x 0) if (&lt; x 3))</pre>
+
+    <p>The macro parser will compare this expression to our macro expression definition (<code>(set-var (#variable #value) if #set?)</code>), deduce that <code>x</code> corresponds to <code>#variable</code>, <code>0</code> corresponds to <code>#value</code>, and <code>(&lt; x 3)</code> corresponds to <code>#set?</code>, and, instead of trying to call a function called <code>set-var</code>, it will evaluate the following:</p>
+
+    <pre>(if (&lt; x 3)
+    (set x 0))</pre>
+
+    <p>Thus, macros allow you to effectively change the language as you need it.</p>
+
+    <h3>Advanced macro features</h3>
+
+    <p>If a macro slot variable ends in “..”, instead of being bound to the corresponding expression in the macro definition, the variable will be bound to a list containing every expression in its position and after. For example, the <code>def</code> macro in the SDL is defined as follows:</p>
+
+    <pre>(macro (def (#name #args..) #body..)
+  (eval (list &#39;let &#39;#name (concat (list &#39;! &#39;#args..)
+    &#39;#body..))))</pre>
+
+    <p>If we now evaluate:</p>
+
+    <pre>(def (f x y)
+  (print x)
+  (+ x y))</pre>
+
+    <p>what will happen is that <code>#args..</code> will be bound to the list <code>(x y)</code>, and <code>#body..</code> to the list containing both body expressions.</p>
+
+    <p>Note that the expression that the macro evaluates to makes use of the <code>eval</code> function. Thus, when the macro is evaluated, the interpreter will evaluate the result of applying <code>eval</code> to the arguments. The <code>eval</code> call generates the following list:</p>
+
+    <pre>(let f (! x y)
+  (print x)
+  (+ x y))</pre>
+
+    <p>The output of the <code>eval</code> call is what is evaluated by the interpreter. This technique is useful for constructing more advanced macros.</p>
+
+    <h1>Schematica library</h1>
+
+    <h2>Default variables</h2>
+
+    <ul>
+      <li><code>#T</code> and <code>true</code> are set to <code>#t</code> (the truth-value in Lisk); <code>#F</code> and <code>#f</code> are set to <code>#f</code>. Use whichever you want as your boolean variables.</li>
+      <li><code>pi</code> (3.14159…)</li>
+      <li><code>pi/2</code> (half of pi; that is, a right angle)</li>
+      <li><code>tau</code> (twice pi; a 360-degree angle)</li>
+      <li><code>e</code> (2.71828…)</li>
+      <li><code>canvas-width</code> (in pixels)</li>
+      <li><code>canvas-height</code> (in pixels)</li>
+      <li><code>canvas-scale</code> (the smaller of the two above variables)</li>
+      <li><code>canvas-corners</code> (a list of four coordinates (each a <code>coord</code>) at the corners of the canvas, in clockwise order starting from top-left)</li>
+      <li><code>bound-lines</code> (a list of four lines (each a <code>line</code>) that run along the borders of the canvas)</li>
+    </ul>
+
+    <h2>Macros</h2>
+
+    <ul>
+      <li><code>(def (function-name arg1 arg2 arg3 ...) body)</code>
+        <ul>
+          <li>A more convenient way to define functions.</li>
+          <li>Example usage: <code>(def (square x) (* x x))</code>; equivalent to <code>(let square (! (x) (* x x)))</code>.</li>
+        </ul>
+      </li>
+      <li><code>(rep variable default)</code>
+        <ul>
+          <li>If <code>variable</code> is <code>#u</code> (undefined), <code>variable</code> will be set to the value of <code>default</code>.</li>
+        </ul>
+      </li>
+      <li><code>(group group-name prop1 prop2 prop3 ... )</code>
+        <ul>
+          <li>It is often useful to collect a bunch of things under one name. The <code>group</code> macro implements a simple form of this type of object-orientedness.</li>
+          <li><strong>Example:</strong>
+            <ul>
+              <li><code>(group stroke-style width (color &quot;black&quot;))</code></li>
+              <li>Once the above has been defined, we can write <code>(let ss (stroke-style 4 &quot;red&quot;))</code> to obtain a function <code>ss</code>, which works in such a way that if we now call it with some symbol as an argument (<code>(ss &#39;width)</code>, for example), it will return the value associated with that symbol (4, in this case).</li>
+              <li>The property <code>color</code> is given a default value <code>“black”</code> in the above; if we omit the second argument specifying the color, <code>(ss &#39;color)</code> will return <code>&quot;black&quot;</code>.</li>
+            </ul>
+          </li>
+          <li><strong>Notes:</strong>
+            <ul>
+              <li>The macro expands a <code>group</code> definition into a function that takes arguments, and returns a dispatch function that spits back those arguments when called with their names later on.</li>
+              <li>Hence <code>group</code> is just a normal function, and can be called with unordered but named function parameters just like any other non-primitive function: <code>(group (color: &quot;red&quot;) (width: 4))</code>, for example.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Helper functions</h2>
+
+    <h3>Printing</h3>
+
+    <ul>
+      <li><code>(prints expr1 expr2 expr3 ... )</code>
+        <ul>
+          <li>Prints any number of statements (each on a separate line).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Mathematical</h3>
+
+    <ul>
+      <li><code>(ng x)</code>
+        <ul>
+          <li>Returns negative <code>x</code>.</li>
+          <li>A minor disadvantage of Lisp-style syntax is that you can’t just add a minus-sign to a variable to get the negative (negative numbers will parse correctly, though).</li>
+        </ul>
+      </li>
+      <li><code>(++ x)</code> / <code>(-- x)</code>
+        <ul>
+          <li>Returns one more / one less than <code>x</code>.</li>
+          <li>Note: will not change the value of <code>x</code>! Use <code>++!</code> and <code>--!</code> for this instead.</li>
+        </ul>
+      </li>
+      <li><code>(++! x)</code> / <code>(--! x)</code>
+        <ul>
+          <li>Sets the value of <code>x</code> to one more / one less than <code>x</code>.</li>
+          <li><strong>Note:</strong> Due to the details of how environment modelling and variable assignment works in the Lisk interpreter, it is impossible for a function to take in a variable, and change the value of that variable outside of its scope. This is because environments are maintained in a stack (the environment of the current scope, the enclosing environment, and so on, until the global environment is reached). If a variable <code>x</code> is changed inside a function, the interpreter finds the first environment in this stack in which <code>x</code> is defined, and updates <code>x</code>s value in that environment - without affecting any other <code>x</code>s in the enclosing environments! Hence <code>++!</code> and <code>--!</code> are implemented in the SDL as macros, not functions.</li>
+        </ul>
+      </li>
+      <li><code>(deg angle)</code> / <code>(rad angle)</code>
+        <ul>
+          <li>Convert between radians and degrees.</li>
+        </ul>
+      </li>
+      <li><code>(average n1 n2 n3 ...)</code> / <code>(average lst)</code>
+        <ul>
+          <li>If the first argument is a list: returns the average of all values in the list.</li>
+          <li>Otherwise: returns the average of all arguments passed to the function. </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>List processing</h3>
+
+    <ul>
+      <li><code>(append lst el)</code>
+        <ul>
+          <li>Returns the list you get when you add <code>el</code> to the end of the list <code>l</code>.</li>
+        </ul>
+      </li>
+      <li><code>(last l)</code>
+        <ul>
+          <li>Returns the last element in the list <code>l</code>.</li>
+        </ul>
+      </li>
+      <li><code>caar</code> / <code>cadr</code> / <code>cdar</code> / <code>cddr</code>
+        <ul>
+          <li>Lisp-style list access functions. </li>
+          <li>Note: <code>car</code> and <code>cdr</code> are just alternative names for the <code>first</code> and <code>rest</code> functions, which return the first element and all but the first element, respectively, of a list.</li>
+          <li><code>(caar x)</code> is equivalent to <code>(car (car x))</code>, <code>(cdar x)</code> to <code>(cdr (car x))</code>, and so on.</li>
+        </ul>
+      </li>
+      <li><code>(filter op l)</code>
+        <ul>
+          <li>Returns a list containing each element of list <code>l</code>, except those for which the function <code>op</code>, when applied to an element, returns <code>#f</code> (false).</li>
+          <li>Example: <code>(filter (! x (&lt; x 10)) &#39;(1 7 10 13 2))</code> returns the list <code>(1 7 2)</code>.</li>
+        </ul>
+      </li>
+      <li><code>(map op l)</code>
+        <ul>
+          <li>“Maps” the function <code>op</code> onto the list <code>l</code></li>
+          <li>That is: returns the list you get when you replace each element <code>el</code> in list <code>l</code> with <code>(op el)</code>.</li>
+          <li>Example: <code>(map (! x (* x x)) &#39;(1 2 3))</code> returns the list <code>(1 4 9)</code>.</li>
+        </ul>
+      </li>
+      <li><code>(accumulate l op val)</code>
+        <ul>
+          <li>“Accumulates” the list by merging successive elements with the function <code>op</code> (starting at <code>val</code>).</li>
+          <li>Example: <code>(accumulate l + 0)</code> returns the sum of the elements in the list <code>l</code>.</li>
+        </ul>
+      </li>
+      <li><code>(list-merge a b op)</code>
+        <ul>
+          <li>Returns the list you get when every element in list <code>a</code> is replaced with the element you get by applying the function <code>op</code> to the element in <code>a</code> and the corresponding element in <code>b</code>.</li>
+          <li>Example: <code>(list-merge &#39;(1 2 3) &#39;(3 2 1) *)</code> returns the list <code>(3 4 3)</code>.</li>
+        </ul>
+      </li>
+      <li><code>(pair-adjacents l)</code>
+        <ul>
+          <li>Returns a list consisting of every adjacent pair of elements in list <code>l</code>.</li>
+          <li>Example: <code>(pair-adjacents &#39;(1 2 3 4))</code> returns the list <code>((1 2) (2 3) (3 4))</code>.</li>
+          <li>(This is used by the SDL to calculate the <code>bound-lines</code> list from <code>corner-points</code>; other uses may be few and far between)</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Functions</h3>
+
+    <ul>
+      <li><code>(composite fn-list)</code>
+        <ul>
+          <li>Returns a function that is equivalent to successive application of all functions in the list <code>fn-list</code>.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Colors</h3>
+
+    <ul>
+      <li><code>(list-col-&gt;hex lst)</code>
+        <ul>
+          <li>Returns the hexadecimal color code representing the balance of colors in <code>lst</code>, a list of three numbers: red, green, and blue amounts, each between 0 and 255 inclusive.</li>
+        </ul>
+      </li>
+      <li><code>(hex-col-&gt;list hex)</code>
+        <ul>
+          <li>Inverse of the above: converts hexadecimal color codes into lists of color components.</li>
+        </ul>
+      </li>
+      <li><code>(color-from-scale n col1 start col2 end)</code>
+        <ul>
+          <li>If <code>n &lt; start</code>, returns <code>col1</code>. If <code>n &gt; end</code>, returns <code>col2</code>. Otherwise returns the color that is a fraction <code>(n - start) / (end - start)</code> between colors <code>col1</code> and <code>col2</code>.</li>
+          <li>Note: all colors should be in hexadecimal format (strings of the form “#RRGGBB”, where RR, GG, and BB are two-digit hexadecimal numbers representing the amount of red, green, and blue in the color).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3><code>coord</code>s</h3>
+
+    <p><code>coord</code>s are used to represent points / coordinates somewhere on the canvas (the name is “<code>coord</code>” rather than “<code>point</code>” because the user will likely want to use the name “<code>point</code>” for variables without overwriting an important function).</p>
+
+    <p>A <code>coord</code> of the point (x, y) is constructed as follows:</p>
+
+    <pre>(coord x y)</pre>
+
+    <p>Other functions for constructing <code>coord</code>s are:</p>
+
+    <ul>
+      <li><code>(rand-point)</code>
+        <ul>
+          <li>Returns a random <code>coord</code> on the canvas.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p>Functions on <code>coord</code>s:</p>
+
+    <ul>
+      <li><code>(x-of c)</code>
+        <ul>
+          <li>Returns the x-coordinate of <code>c</code>.</li>
+        </ul>
+      </li>
+      <li><code>(y-of c)</code>
+        <ul>
+          <li>Returns the y-coordinate of <code>c</code>.</li>
+        </ul>
+      </li>
+      <li><code>(coord? c)</code>
+        <ul>
+          <li>Returns <code>#T</code> if <code>c</code> is a <code>coord</code>, <code>#F</code> otherwise.</li>
+        </ul>
+      </li>
+      <li><code>(in-bounds? c)</code>
+        <ul>
+          <li>Returns <code>#T</code> if <code>c</code> is inside the boundaries of the canvas (or exactly on them).</li>
+        </ul>
+      </li>
+      <li><code>(translate-coord c dx dy)</code>
+        <ul>
+          <li>Returns the <code>coord</code> you get when <code>c</code> is translated <code>dx</code> in the x-direction and <code>dy</code> in the y-direction.</li>
+        </ul>
+      </li>
+      <li><code>(over c dist)</code> / <code>(under c dist)</code> / <code>(left-of c dist)</code> / <code>(right-of c dist)</code>
+        <ul>
+          <li>Return a <code>coord</code> that is a distance <code>dist</code> up/down/left/right of <code>c</code>.</li>
+        </ul>
+      </li>
+      <li><code>(average-of-coords coord-list)</code> / <code>(average-of-coords coord1 coord2 coord3 ...)</code>
+        <ul>
+          <li>If the first argument is a list: returns the average position of each <code>coord</code> in the list.</li>
+          <li>Else: returns the average position of each <code>coord</code> passed as an argument to <code>average-of-coords</code>.</li>
+        </ul>
+      </li>
+      <li><code>(distance coord1 coord2)</code>
+        <ul>
+          <li>Returns the distance between <code>coord1</code> and <code>coord2</code>.</li>
+        </ul>
+      </li>
+      <li><code>(coord+vect c v)</code>
+        <ul>
+          <li>Returns the coord that is at the position of coord <code>c</code>, but displaced by the vector <code>v</code>.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3><code>vector</code>s</h3>
+
+    <p>A <code>vector</code> is constructed as follows: <code>(vector x y z)</code> (the <code>z</code> component of the vector defaults to 0 and can be omitted).</p>
+
+    <p>The following constructors are also available:</p>
+
+    <ul>
+      <li><code>(mag/dir-&gt;vect magnitude direction-angle)</code> converts a length and angle into a vector.</li>
+      <li><code>(dir-&gt;vect angle)</code> returns a unit vector pointing at a specified angle.</li>
+      <li><code>(coords-&gt;vect x1 y1 x2 y2)</code> returns a vector from point (x1, y1) to (x2, y2).</li>
+      <li><code>(points-&gt;vect a b)</code> returns a vector from <code>coord</code> <code>a</code> to <code>coord</code> <code>b</code>.</li>
+    </ul>
+
+    <p>The <code>vector</code> function returns a function that tags can be passed to in order to achieve things (see the section below for a more detailed look at how this type of thing is used, or just read on).</p>
+
+    <p>If <code>v</code> is a vector (that is, the function returned by using <code>vector</code> to construct a vector), then:</p>
+
+    <ul>
+      <li><code>(v)</code> returns a list containing the components of the vector.</li>
+      <li><code>(v &#39;x)</code> / <code>(v &#39;y)</code> / <code>(v &#39;z)</code> can be used to access the x/y/z components of the vector.</li>
+      <li><code>(v &#39;set-x)</code> / <code>(v &#39;set-y)</code> / <code>(v &#39;set-z)</code> can be used to CHANGE the x/y/z components of the vector.</li>
+      <li><code>(v &#39;set new-values)</code> can be used to set the x, y, and z components of <code>v</code> to the 0th, 1st, and 2nd (defaults to zero) element in the list <code>new-values</code>.</li>
+      <li><code>(v &#39;+ w)</code> returns the sum of vectors <code>v</code> and <code>w</code>.</li>
+      <li><code>(v &#39;* factor)</code> returns a vector where each component is <code>factor</code> times larger than in <code>v</code>.</li>
+      <li><code>(v &#39;norm)</code> returns a unit vector pointing in <code>v</code>’s direction.</li>
+      <li><code>(v &#39;normalize!)</code> CHANGES <code>v</code> so that it becomes a unit vector (same direction, length is 1).</li>
+      <li><code>(v &#39;dot w)</code> returns the dot product of vectors <code>v</code> and <code>w</code>. </li>
+      <li><code>(v &#39;cross w)</code> returns the cross product of vectors <code>v</code> and <code>w</code> (note: this is a vector).</li>
+      <li><code>(v &#39;perpendicular)</code> returns a vector perpendicular to <code>v</code>.</li>
+      <li><code>(v &#39;parallel? w)</code> tests whether vectors <code>v</code> and <code>w</code> are parallel to each other.</li>
+      <li><code>(v &#39;angle)</code> returns the angle at which <code>v</code> points.</li>
+      <li><code>(v &#39;rotated angle)</code> returns the vector you get when <code>v</code> is rotated by <code>angle</code>.</li>
+    </ul>
+
+    <h3>Drawing elements</h3>
+
+    <p>For the function descriptions below, all arguments are listed in order. Keep in mind that Lisk also allows identifying arguments by name rather than order. The following are equivalent:</p>
+
+    <pre>(circle 100 200 40)
+  (circle (x: 100) (y: 200) (r: 40))
+  (circle (r: 40) (x: 100) (y: 200))</pre>
+
+    <p>All functions here will fill in random or default values for any arguments that you fail to pass.</p>
+
+    <p>The functions in this section all return a function, which can be used to retrieve information about the element and/or draw/get new elements.</p>
+
+    <p>For instance, if you write <code>(let l (line))</code>, <code>l</code> will be bound to the function that the <code>line</code> function returns. Write <code>(l &#39;angle)</code>, and you will get the angle of the line. <code>(l &#39;draw)</code>, meanwhile, returns yet another function, which you can pass arguments to in order to draw the line in a specified way.</p>
+
+    <p>Note also that because Lisk allows for named functions, you can write things like <code>(line (color: &quot;red&quot;) (angle: pi))</code> and not have to worry about argument order.</p>
+
+    <h4><code>stroke-style</code></h4>
+
+    <p><code>stroke-style</code> is a <code>group</code>; basically just a function that will spit out preset parameters when passed the right symbols as an argument.</p>
+
+    <p>It takes the following arguments:</p>
+
+    <ul>
+      <li><code>width</code> (defaults to 1)</li>
+      <li><code>color</code> (defaults to black)</li>
+      <li><code>style</code>: either <code>dash</code>/<code>dashed</code>, <code>dot</code>/<code>dotted</code>, or <code>dash dot</code>/<code>dot dash</code> (slash-separated terms are equivalent; there are two to make it harder to forget both). Defaults to a solid stroke if none of these options are specified.</li>
+    </ul>
+
+    <p>The <code>text-style</code> function is similar (see description of text-related functions below).</p>
+
+    <p><strong>Example:</strong></p>
+
+    <pre>(let red-stroke (stroke-style (color: &quot;red&quot;)))
+  (circle (stroke: red-stroke))</pre>
+
+    <p>The circle will now be drawn with a red outline.</p>
+
+    <h4><code>line</code></h4>
+
+    <p>Do not confuse <code>line</code>s (infinite in length) with <code>lseg</code>s (line segments).</p>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>point</code>: a <code>coord</code> on the line (default: a random point on the canvas).</li>
+          <li><code>angle</code>: the line’s angle (default: a random value between 0 and 2* pi (tau)).</li>
+          <li><code>stroke</code>: a <code>stroke-style</code>.</li>
+          <li><code>draw?</code>: whether to draw the line immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the line will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>l</code> is the <code>line</code> object):
+        <ul>
+          <li><code>(l &#39;point)</code>: returns the point used to define the line.</li>
+          <li><code>(l &#39;angle)</code>: returns the line’s angle.</li>
+          <li><code>(l &#39;vector)</code>: returns a unit <code>vector</code> pointing in the direction of the line.</li>
+          <li><code>(l &#39;intersect j)</code>: returns the <code>coord</code> at which <code>line</code>s <code>l</code> and <code>j</code> intersect, or <code>#f</code> if such a point does not exist.</li>
+          <li><code>(l &#39;bound-intersects)</code>: returns a list of <code>coord</code>s at which the line intersects the boundaries of the canvas.</li>
+          <li><code>(l &#39;y-at-x x)</code>: returns the y-coordinate of the point on the line for which the x-coordinate is <code>x</code>, or <code>#f</code> if such a point does not exist.</li>
+          <li><code>(l &#39;x-at-y y)</code>: same as above, but y/x flipped.</li>
+          <li><code>(l &#39;draw)</code>: returns a function that takes the arguments <code>color</code> and <code>thickness</code> that can be used to draw the line (a black line of thickness 1 is the default).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p>The following functions relating to lines are also available:</p>
+
+    <ul>
+      <li><code>(cline point angle)</code>
+        <ul>
+          <li>Returns a line object; does not render the line (a shortcut that can be used instead of passing <code>(draw?: #f)</code> as an argument to the <code>line</code> function).</li>
+          <li>“<code>cline</code>” can be remembered as an abbreviation of “compute line”; that is, a line used for computing the position of something else rather than being (automatically) drawn on the diagram. </li>
+        </ul>
+      </li>
+      <li><code>(line-from-points x1 y1 x2 y2 color thickness draw?)</code>
+        <ul>
+          <li>Constructs a line that passes through points (x1, y1) and (x2, y2).</li>
+          <li>Alternatively, the first two arguments can be points, in which case the function will automatically extract their x/y coordinates and work correctly.</li>
+        </ul>
+      </li>
+      <li><code>(cline-from-points x1 y1 x2 y2)</code>
+        <ul>
+          <li>The same as above, but the line will not render automatically.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>lseg</code></h4>
+
+    <p>“<code>lseg</code>” is an abbreviation of “line segment”.</p>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>start</code>: a <code>coord</code> at which the line segment starts (default: a random point on the canvas).</li>
+          <li><code>end</code>: a <code>coord?</code> at which the line segment ends (default: a random point on the canvas).</li>
+          <li><code>stroke</code>.</li>
+          <li><code>draw?</code>: whether to draw the line immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the line segment will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>seg</code> is the <code>lseg</code> object):
+        <ul>
+          <li><code>(seg &#39;start)</code> / <code>(seg &#39;end)</code>: returns the start/end points of the <code>lseg</code>.</li>
+          <li><code>(seg &#39;length)</code>: returns the length of the line segment.</li>
+          <li><code>(seg &#39;line)</code>: returns the <code>line</code> along which the line segment lies (the line is not drawn).</li>
+          <li><code>(seg &#39;draw)</code>: returns a function that takes the arguments <code>color</code> and <code>thickness</code> that can be used to draw the line segment (a black line segment of thickness 1 is the default).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>q-bezier</code> (quadratic Bezier curve)</h4>
+
+    <ul>
+      <li>Arguments (all arguments that take a <code>coord</code> default to a random one):
+        <ul>
+          <li><code>start</code>: a <code>coord</code> where the curve starts.</li>
+          <li><code>end</code>: a <code>coord</code> where the curve ends.</li>
+          <li><code>control</code>: a <code>coord</code> representing the the control point (towards which the curve will arc as it goes from <code>start</code> to <code>end</code>).</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>c-bezier</code> (quadratic Bezier curve)</h4>
+
+    <ul>
+      <li>Arguments (all arguments that take a <code>coord</code> default to a random one):
+        <ul>
+          <li><code>start</code>: a <code>coord</code> where the curve starts.</li>
+          <li><code>s-control</code>: a <code>coord</code> representing the control point of the starting point (the curve will begin by heading in this direction).</li>
+          <li><code>e-control</code>: a <code>coord</code> representing the control point of the ending point (the curve will curve away from this direction as it heads towards <code>end</code>).</li>
+          <li><code>end</code>: a <code>coord</code> where the curve ends.</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>curve</code> (cubic Bezier curve, drawn from different parameters)</h4>
+
+    <ul>
+      <li>Arguments (all arguments that take a <code>coord</code> default to a random one):
+        <ul>
+          <li><code>start</code>: a <code>coord</code> where the curve starts.</li>
+          <li><code>end</code>: a <code>coord</code> where the curve ends.</li>
+          <li><code>s-angle</code>: the angle at which the curve leaves <code>start</code>. Defaults to a random angle.</li>
+          <li><code>e-angle</code>: the angle at which the curve enters <code>end</code>. Defaults to a random angle.</li>
+          <li><code>s-size</code>: how far the curve tends in the direction of <code>s-angle</code> (the starting control point for the Bezier curve is placed this distance from <code>start</code>). Defaults to a random value between 0 and the distance between <code>start</code> and <code>end</code>.</li>
+          <li><code>e-size</code>: from how far the curve tends towards the direction of <code>e-angle</code> as it approaches the end (the ending control point for the Bezier curve is placed this distance from <code>end</code>). Defaults to the same random value as <code>s-size</code> (so unless otherwise specified, <code>s-size = e-size</code>, and specifying <code>s-size</code> alone is enough to set <code>e-size</code> to the same value).</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>arc-from-flags</code> (circular arc)</h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>start</code>: a <code>coord</code> where the arc starts. Defaults to a random point.</li>
+          <li><code>end</code>: a <code>coord</code> where the arc ends. Defaults to a random point.</li>
+          <li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
+          <li><code>size-flag</code>: either true or false. See SVG arc documentation to see how to use it. Defaults to false.</li>
+          <li><code>sweep-flag</code>: either true or false. Refer to SVG arc documentation to see how to use it. Defaults to false.</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>arc</code> (circular arc)</h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>mid</code>: a <code>coord</code> representing the mid point of the circle the arc is part of. Defaults to a random point.</li>
+          <li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
+          <li><code>a1</code>: the angle (relative to the circle’s centre) that the arc begins at. Defaults to a random angle.</li>
+          <li><code>a2</code>: the angle that the arc ends at. Defaults to a random angle.</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;mid)</code> will give you the value of <code>mid</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>arrow</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>start</code> and</li>
+          <li><code>end</code>, both coords.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties. </li>
+          <li><code>angle</code>: the angle of the arrow head.</li>
+          <li><code>size</code>: the size of the lines on the arrow head. Defaults to 1/6 of the distance between <code>start</code> and <code>end</code>.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>c-arrow</code> (curved arrow)</h4>
+
+    <ul>
+      <li>Arguments (all arguments that take a <code>coord</code> default to a random one):
+        <ul>
+          <li><code>start</code>: a <code>coord</code> where the curve starts.</li>
+          <li><code>end</code>: a <code>coord</code> where the curve ends.</li>
+          <li><code>s-angle</code>: the angle at which the curve leaves <code>start</code>. Defaults to a random angle.</li>
+          <li><code>e-angle</code>: the angle at which the curve enters <code>end</code>. Defaults to a random angle.</li>
+          <li><code>s-size</code>: how far the curve tends in the direction of <code>s-angle</code> (the starting control point for the Bezier curve is placed this distance from <code>start</code>). Defaults to a random value between 0 and the distance between <code>start</code> and <code>end</code>.</li>
+          <li><code>e-size</code>: from how far the curve tends towards the direction of <code>e-angle</code> as it approaches the end (the ending control point for the Bezier curve is placed this distance from <code>end</code>). Defaults to the same random value as <code>s-size</code> (so unless otherwise specified, <code>s-size = e-size</code>, and specifying <code>s-size</code> alone is enough to set <code>e-size</code> to the same value).</li>
+          <li><code>angle</code>: the angle of the arrow head.</li>
+          <li><code>size</code>: the length of the lines on the arrow head.</li>
+          <li><code>fill</code>: fill colour. Defaults to “none”.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;start)</code> will give you the value of <code>start</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>arc-arrow</code> (arrow along a circular arc)</h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>mid</code>: a <code>coord</code> representing the mid point of the circle the arc is part of. Defaults to a random point.</li>
+          <li><code>r</code>: the radius of the circle that the arc is part of. Defaults to a random value between 0 and <code>canvas-scale</code>.</li>
+          <li><code>a1</code>: the angle (relative to the circle’s centre) that the arc begins at. Defaults to a random angle.</li>
+          <li><code>a2</code>: the angle that the arc ends at. Defaults to a random angle.</li>
+          <li><code>angle</code>: the angle of the arrow head.</li>
+          <li><code>size</code>: the length of the lines on the arrow head.</li>
+          <li><code>stroke</code>: a <code>stroke-style</code> representing stroke properties.</li>
+        </ul>
+      </li>
+      <li>Returns a function. A symbol representing an argument can be passed to this function to get the value of the argument (though not for style properties like <code>stroke</code>). For example, if <code>val</code> is what the function returns, <code>(val &#39;r)</code> will give you the value of <code>r</code> when the function was run.</li>
+    </ul>
+
+    <h4><code>circle</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>x</code> / <code>y</code>: the x/y-coordinates of the centre of the circle (default: randomly selected, but guaranteed to be on the canvas).</li>
+          <li><code>r</code>: the circle’s radius.</li>
+          <li><code>fill</code>: the colour of the circle’s interior (default: “none”)</li>
+          <li><code>stroke</code>.</li>
+          <li><code>draw?</code>: whether to draw the circle immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the circle will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>O</code> is the <code>circle</code> object):
+        <ul>
+          <li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the circle.</li>
+          <li><code>(O &#39;point-at-angle angle)</code>: returns the <code>coord</code> of a point on the circle at an angle of <code>angle</code> relative to the circle’s centre (<code>angle</code> defaults to a random angle).</li>
+          <li><code>(O &#39;area)</code>: returns the area of the circle, in square pixels on the canvas.</li>
+          <li><code>(O &#39;radial-vect angle)</code>: returns a <code>vector</code> from the circle’s centre to a point at angle <code>angle</code> on its perimeter (<code>angle</code> defaults to a random value).</li>
+          <li><code>(O &#39;tangent angle)</code>: returns a <code>line</code> that is tangent to the circle and meets it at a given angle to the circle’s centre (the line is not drawn, and <code>angle</code> defaults to a random value).</li>
+          <li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the circle.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>ellipse</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>x</code> / <code>y</code>: the x/y-coordinates of the centre of the circle (default: randomly selected, but guaranteed to be on the canvas).</li>
+          <li><code>rx</code> / <code>ry</code>: the radius of the ellipse in the x- and y-directions, respectively (by default, reasonable random values).</li>
+          <li><code>angle</code>: an angle at which the ellipse is to be rotated (0 by default) </li>
+          <li><code>fill</code>: the colour of the ellipse’s interior (default: “none”)</li>
+          <li><code>stroke</code>.</li>
+          <li><code>draw?</code>: whether to draw the ellipse immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the ellipse will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>O</code> is the <code>ellipse</code> object):
+        <ul>
+          <li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the ellipse.</li>
+          <li><code>(O &#39;rx)</code> / <code>(O &#39;ry)</code> / <code>(O &#39;angle)</code>: returns the respective property of the ellipse.</li>
+          <li><code>(O &#39;eccentricity)</code>: calculates the eccentricity of the ellipse.</li>
+          <li><code>(O &#39;semi-major)</code>: returns the length of the ellipse’s semi-major axis (in other words, whichever of <code>rx</code> and <code>ry</code> is larger).</li>
+          <li><code>(O &#39;semi-minor)</code>: returns the length of the ellipse’s semi-minor axis (in other words, whichever of <code>rx</code> and <code>ry</code> is smaller).</li>
+          <li><code>(O &#39;diameter-lseg-x)</code> / <code>(O &#39;diameter-lseg-y)</code>: returns line segments (which are not rendered) representing the ellipse’s diameter along the x/y axis of the ellipse (the ellipse’s angle does not affect this).</li>
+          <li><code>(O &#39;major-axis)</code> / <code>(O &#39;minor-axis)</code>: the same as above, but automatically selects the larger/smaller of the diameter line segments.</li>
+          <li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the ellipse.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>polygon</code></h4>
+
+    <p>The most general polygon-drawing function; see below for more specific cases (rectangles, etc.)</p>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>vertices</code>: a list of <code>coord</code>s specifying where (relative to the polygon’s centre) to place the polygon’s vertices (defaults to a set of three random points on the canvas).</li>
+          <li><code>centre</code>: a <code>coord</code> specifying the centre of the polygon (default: <code>(coord 0 0)</code>). </li>
+          <li><code>fill</code>: the colour of the polygon’s interior (default: “none”)</li>
+          <li><code>stroke</code>.</li>
+          <li><code>draw?</code>: whether to draw the polygon immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the polygon will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>P</code> is the <code>polygon</code> object):
+        <ul>
+          <li><code>(O &#39;point)</code> / <code>(O &#39;centre)</code>: returns a <code>coord</code> representing the centre of the polygon.</li>
+          <li><code>(O &#39;vertices)</code>: returns the list of vertices (each a <code>coord</code> representing the x/y distance from the polygon’s centre) of the polygon.</li>
+          <li><code>(O &#39;vertex-coords)</code>: returns the coordinates (each a <code>coord</code>) of the polygon’s vertices (that is, where on the canvas they will be drawn, rather than their locations relative to the polygon’s centre).</li>
+          <li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the polygon.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>rect</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>x</code> / <code>y</code>: the coordinates of the top-left corner of the <code>rect</code>.</li>
+          <li><code>width</code> / <code>height</code></li>
+          <li><code>fill</code>: the colour of the polygon’s interior (default: “none”)</li>
+          <li><code>stroke</code>.</li>
+          <li><code>draw?</code>: whether to draw the polygon immediately (default: <code>#T</code>)</li>
+        </ul>
+      </li>
+      <li>Actions:
+        <ul>
+          <li>if <code>draw?</code> is <code>#T</code> (which it is by default), the rectangle will be rendered on the canvas immediately.</li>
+        </ul>
+      </li>
+      <li>Returns a function which can be used in the following ways (<code>P</code> is the <code>polygon</code> object):
+        <ul>
+          <li><code>(O &#39;x)</code> / <code>(O &#39;y)</code>: returns the x/y coordinate of the top-left corner of the rectangle.</li>
+          <li><code>(O &#39;h)</code> / <code>(O &#39;height)</code>: returns the rectangle’s height.</li>
+          <li><code>(O &#39;w)</code> / <code>(O &#39;width)</code>: returns the rectangle’s width. </li>
+          <li><code>(O &#39;corners)</code> / <code>(O &#39;vertices)</code>: returns a vertex list (each a <code>coord</code> representing the x/y coordinate of a corner of the rectangle).</li>
+          <li><code>(O &#39;draw)</code>: returns a function that takes the arguments <code>fill</code>, <code>outline-width</code>, and <code>outline-color</code> that can be used to draw the rectangle.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4><code>text</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>content</code>: what text to display.</li>
+          <li><code>loc</code>: a <code>coord</code> specifying the position of the top-left corner of where to start drawing the text.</li>
+          <li><code>style</code>: a <code>text-style</code> specifying any stylistic properties (defaults to size 16 black Baskerville text).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p><code>text-style</code> is a <code>group</code> that takes the arguments <code>size</code>, <code>color</code>, <code>styling</code>, and <code>font</code>.</p>
+
+    <p><strong>Example:</strong></p>
+
+    <pre>(let red-text (text-style (color: red) (styling: &quot;underline&quot;)))
+  (text &quot;Sample text&quot; (coord 100 200) red-text)</pre>
+
+    <p>This first defines a <code>text-style</code>, and then draws text at x=100, y=200 with that styling.</p>
+
+    <h4><code>tex</code></h4>
+
+    <ul>
+      <li>Arguments:
+        <ul>
+          <li><code>content</code>: the LaTeX code to render.</li>
+          <li><code>loc</code>: a <code>coord</code> specifying the top-left corner from which to start rendering.</li>
+          <li><code>size</code>: the font size to use.
+            <ul>
+              <li>MathJax is sometimes a bit weird with font sizes; changing what LaTeX you’re rendering will sometimes rescale the result.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+  </div>
+
+</body>
+
+</html>

@@ -23,7 +23,7 @@ premature optimisation is the root of all evil.*/
     "string parsing",
     ['"strings"', eq, '"strings"'],
     ['"do spaces work?"', eq, '"do spaces work?"'],
-    ['"\'(what if) a string contains : special characters"', eq, '"\'(what if) a string contains : special characters"']
+    ['"\'(what if)\'\' a string contains : special characters\\""', eq, '"\'(what if)\'\' a string contains : special characters\\""']
   ],
   [
     "quotation",
@@ -67,6 +67,9 @@ premature optimisation is the root of all evil.*/
     ["(= 3 42)", eq, "#f"],
     ["(= 42 42.0)", eq, "#t"],
     ["(= -1 -1.0)", eq, "#t"],
+    ["(== '(1 3 2 (6 5 7 1) 8) (quote (1 3 2 (6 5 7 1) 8)))", eq, "#t"],
+    ["(== '(1 3 2 (5 4 6) 8) '(1 3 2 (5 4 6) 7))", eq, "#f"],
+    ["(== + -)", eq, "#f"],
     ["(+ 3 -3)", eq, 0],
     ["(+ 1 1 20 5 5 10)", eq, 42],
     ["(* 1 2 3)", eq, 6],
@@ -82,6 +85,7 @@ premature optimisation is the root of all evil.*/
     ["(ceil 3.3)", eq, 4],
     ["(> 4 1 5 2)", eq, "#f"],
     ["(> 4 -1 -152)", eq, "#t"],
+    ["(< 4 4.000000000000001 4.000000000000002)", eq, "#f"],
     ["(< 4 5 7)", eq, "#t"],
     ["(< 0 0)", eq, "#f"],
     ["(> 0 0)", eq, "#f"],
@@ -108,7 +112,9 @@ premature optimisation is the root of all evil.*/
     ["(first '(((1 1) 2) 3 4))", arrayEq, [[1, 1], 2]],
     ["(rest '(1 2 3))", arrayEq, [2, 3]],
     ["(concat '(1 2 3) '(4 5 6))", arrayEq, [1, 2, 3, 4, 5, 6]],
-    ["(concat '((1)) '(2))", arrayEq, [[1], 2]]
+    ["(concat '((1)) '(2))", arrayEq, [[1], 2]],
+    ["(slice '(1 2 3 4) 1 2)", arrayEq, [2]],
+    ["(slice '(0 1 2 3 4 5) 3)", arrayEq, [3, 4, 5]]
   ],
   [
     "strings",
@@ -140,7 +146,7 @@ function performTests() {
       let expr = category[i][0];
       let equalityTestFunc = category[i][1];
       let expectedResult = category[i][2];
-      let result = le(expr, new Environment(false));
+      let result = JIT(expr, new Environment(false));
       if (!equalityTestFunc(expectedResult, result)) {
         resultsArray.push({"category": catName,
                            "expression": expr,
@@ -149,22 +155,18 @@ function performTests() {
       }
     }
   }
-  function numberOfTests(tests) {
-    let sum = 0;
-    for (let i = 0; i < tests.length; i++) {
-      for (let j = 1; j < tests[i].length; j++) {
-        ++sum;
-      }
-    }
-    return sum;
-  }
+
+  let numberOfTests = -tests.length;
+  for(let i = tests.length; i--;)
+    numberOfTests += tests[i].length;
+
   let resultsArray = [];
-  tests.forEach(category => testCategory(category));
+  tests.forEach(testCategory);
   if (resultsArray.length == 0) {
-    console.log("Lisk implementation successfully validated with " + numberOfTests(tests) + " tests");
+    console.log("Lisk implementation successfully validated with " + numberOfTests + " tests");
     return true;
   } else {
-    console.log(resultsArray.length + "/" + numberOfTests(tests) + " tests failed. Details:");
+    console.log(resultsArray.length + "/" + numberOfTests + " tests failed. Details:");
     console.log(resultsArray);
     return false;
   }
